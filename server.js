@@ -627,6 +627,8 @@ app.post('/api/chat', (req, res) => {
     landmark: currentDraft.landmark,
     city: currentDraft.city,
     formal_description: currentDraft.formal_description,
+    reporter_name: currentDraft.reporter_name,
+    contact: currentDraft.contact,
     missing_fields,
     reply,
     lastAskedField: currentDraft.lastAskedField
