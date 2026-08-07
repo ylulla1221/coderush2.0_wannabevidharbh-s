@@ -1,0 +1,264 @@
+{
+  "_comment": "Jurisdiction lookup table for CivicFlow AI — Phase 2. Keys are normalised location strings (lowercase). Values contain ward, zone, and municipal body metadata.",
+
+  "vit pune": {
+    "ward": "Ward 12",
+    "zone": "Zone A",
+    "municipal_body": "PMC"
+  },
+  "vit pune gate 3": {
+    "ward": "Ward 12",
+    "zone": "Zone A",
+    "municipal_body": "PMC"
+  },
+  "vit pune main gate": {
+    "ward": "Ward 12",
+    "zone": "Zone A",
+    "municipal_body": "PMC"
+  },
+  "fc road": {
+    "ward": "Ward 9",
+    "zone": "Zone B",
+    "municipal_body": "PMC"
+  },
+  "fergusson college road": {
+    "ward": "Ward 9",
+    "zone": "Zone B",
+    "municipal_body": "PMC"
+  },
+  "shivajinagar": {
+    "ward": "Ward 5",
+    "zone": "Zone A",
+    "municipal_body": "PMC"
+  },
+  "shivajinagar bus stand": {
+    "ward": "Ward 5",
+    "zone": "Zone A",
+    "municipal_body": "PMC"
+  },
+  "shivajinagar bus stop": {
+    "ward": "Ward 5",
+    "zone": "Zone A",
+    "municipal_body": "PMC"
+  },
+  "pune station": {
+    "ward": "Ward 4",
+    "zone": "Zone C",
+    "municipal_body": "PMC"
+  },
+  "pune railway station": {
+    "ward": "Ward 4",
+    "zone": "Zone C",
+    "municipal_body": "PMC"
+  },
+  "koregaon park": {
+    "ward": "Ward 8",
+    "zone": "Zone B",
+    "municipal_body": "PMC"
+  },
+  "camp": {
+    "ward": "Ward 3",
+    "zone": "Zone C",
+    "municipal_body": "PMC"
+  },
+  "pune cantonment": {
+    "ward": "Ward 3",
+    "zone": "Zone C",
+    "municipal_body": "PMC"
+  },
+  "deccan": {
+    "ward": "Ward 10",
+    "zone": "Zone B",
+    "municipal_body": "PMC"
+  },
+  "deccan gymkhana": {
+    "ward": "Ward 10",
+    "zone": "Zone B",
+    "municipal_body": "PMC"
+  },
+  "kothrud": {
+    "ward": "Ward 18",
+    "zone": "Zone D",
+    "municipal_body": "PMC"
+  },
+  "karve road": {
+    "ward": "Ward 17",
+    "zone": "Zone D",
+    "municipal_body": "PMC"
+  },
+  "paud road": {
+    "ward": "Ward 19",
+    "zone": "Zone D",
+    "municipal_body": "PMC"
+  },
+  "baner": {
+    "ward": "Ward 22",
+    "zone": "Zone E",
+    "municipal_body": "PMC"
+  },
+  "balewadi": {
+    "ward": "Ward 23",
+    "zone": "Zone E",
+    "municipal_body": "PMC"
+  },
+  "aundh": {
+    "ward": "Ward 21",
+    "zone": "Zone E",
+    "municipal_body": "PMC"
+  },
+  "wakad": {
+    "ward": "Ward 24",
+    "zone": "Zone E",
+    "municipal_body": "PCMC"
+  },
+  "pimpri": {
+    "ward": "Ward 1",
+    "zone": "Zone F",
+    "municipal_body": "PCMC"
+  },
+  "chinchwad": {
+    "ward": "Ward 2",
+    "zone": "Zone F",
+    "municipal_body": "PCMC"
+  },
+  "akurdi": {
+    "ward": "Ward 3",
+    "zone": "Zone F",
+    "municipal_body": "PCMC"
+  },
+  "nigdi": {
+    "ward": "Ward 4",
+    "zone": "Zone F",
+    "municipal_body": "PCMC"
+  },
+  "hadapsar": {
+    "ward": "Ward 30",
+    "zone": "Zone G",
+    "municipal_body": "PMC"
+  },
+  "magarpatta": {
+    "ward": "Ward 29",
+    "zone": "Zone G",
+    "municipal_body": "PMC"
+  },
+  "wanowrie": {
+    "ward": "Ward 28",
+    "zone": "Zone G",
+    "municipal_body": "PMC"
+  },
+  "kondhwa": {
+    "ward": "Ward 27",
+    "zone": "Zone G",
+    "municipal_body": "PMC"
+  },
+  "bibwewadi": {
+    "ward": "Ward 26",
+    "zone": "Zone G",
+    "municipal_body": "PMC"
+  },
+  "katraj": {
+    "ward": "Ward 25",
+    "zone": "Zone G",
+    "municipal_body": "PMC"
+  },
+  "swargate": {
+    "ward": "Ward 13",
+    "zone": "Zone C",
+    "municipal_body": "PMC"
+  },
+  "tilak road": {
+    "ward": "Ward 14",
+    "zone": "Zone C",
+    "municipal_body": "PMC"
+  },
+  "sadashiv peth": {
+    "ward": "Ward 15",
+    "zone": "Zone C",
+    "municipal_body": "PMC"
+  },
+  "navi peth": {
+    "ward": "Ward 16",
+    "zone": "Zone C",
+    "municipal_body": "PMC"
+  },
+  "laxmi road": {
+    "ward": "Ward 11",
+    "zone": "Zone B",
+    "municipal_body": "PMC"
+  },
+  "budhwar peth": {
+    "ward": "Ward 7",
+    "zone": "Zone B",
+    "municipal_body": "PMC"
+  },
+  "kasba peth": {
+    "ward": "Ward 6",
+    "zone": "Zone B",
+    "municipal_body": "PMC"
+  },
+  "city hospital": {
+    "ward": "Ward 4",
+    "zone": "Zone C",
+    "municipal_body": "PMC"
+  },
+  "mg road": {
+    "ward": "Ward 5",
+    "zone": "Zone A",
+    "municipal_body": "PMC"
+  },
+  "mg road nagpur": {
+    "ward": "Ward 5",
+    "zone": "Zone A",
+    "municipal_body": "NMC"
+  },
+  "central bus stand": {
+    "ward": "Ward 4",
+    "zone": "Zone C",
+    "municipal_body": "PMC"
+  },
+  "hanuman mandir": {
+    "ward": "Ward 6",
+    "zone": "Zone B",
+    "municipal_body": "PMC"
+  },
+  "hanuman mandir chowk": {
+    "ward": "Ward 6",
+    "zone": "Zone B",
+    "municipal_body": "PMC"
+  },
+  "abc school": {
+    "ward": "Ward 9",
+    "zone": "Zone B",
+    "municipal_body": "PMC"
+  },
+  "viman nagar": {
+    "ward": "Ward 34",
+    "zone": "Zone H",
+    "municipal_body": "PMC"
+  },
+  "kharadi": {
+    "ward": "Ward 35",
+    "zone": "Zone H",
+    "municipal_body": "PMC"
+  },
+  "wagholi": {
+    "ward": "Ward 36",
+    "zone": "Zone H",
+    "municipal_body": "PMC"
+  },
+  "yerawada": {
+    "ward": "Ward 33",
+    "zone": "Zone H",
+    "municipal_body": "PMC"
+  },
+  "nagar road": {
+    "ward": "Ward 32",
+    "zone": "Zone H",
+    "municipal_body": "PMC"
+  },
+  "vishrantwadi": {
+    "ward": "Ward 31",
+    "zone": "Zone H",
+    "municipal_body": "PMC"
+  }
+}

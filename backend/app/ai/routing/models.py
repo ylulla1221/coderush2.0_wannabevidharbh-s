@@ -174,3 +174,27 @@ class RoutingResult(BaseModel):
             '"manual_review" when the category was unrecognised.'
         ),
     )
+
+    # -------------------------------------------------------------------------
+    # Phase 2 — Jurisdiction & Geography Engine fields
+    # -------------------------------------------------------------------------
+
+    ward: str | None = Field(
+        default=None,
+        description="Municipal ward resolved from the complaint location.",
+    )
+
+    zone_jurisdiction: str | None = Field(
+        default=None,
+        description="Administrative zone resolved from the complaint location (jurisdiction).",
+    )
+
+    municipal_body: str | None = Field(
+        default=None,
+        description="Municipal corporation responsible for the complaint location (e.g. PMC, PCMC).",
+    )
+
+    jurisdiction_found: bool = Field(
+        default=False,
+        description="True when the location was successfully resolved to a jurisdiction.",
+    )

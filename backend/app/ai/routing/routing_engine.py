@@ -60,6 +60,7 @@ from typing import Any
 
 from . import config, constants
 from .exceptions import RoutingValidationError
+from .jurisdiction import lookup_location
 from .knowledge_base import get_fallback_route, lookup_category
 from .models import RoutingInput, RoutingResult
 
@@ -370,6 +371,49 @@ def _resolve_kb_metadata(
 
 
 # =============================================================================
+# PRIVATE — PHASE 2: JURISDICTION & GEOGRAPHY
+#
+# Resolves ward, zone_jurisdiction, municipal_body, and jurisdiction_found
+# from the free-text location string extracted by the Vision LLM.
+# This helper is the ONLY function that reads from jurisdiction.py/json.
+# Department, team, SLA, and escalation logic are completely untouched.
+# =============================================================================
+
+
+def _resolve_jurisdiction(
+    location: str | None,
+    reasons: list[str],
+) -> tuple[str | None, str | None, str | None, bool]:
+    """Resolve a location string into jurisdiction metadata.
+
+    Delegates to :func:`~.jurisdiction.lookup_location` which performs
+    exact-then-substring matching against jurisdiction.json.
+
+    Args:
+        location: Free-text location string from the Vision LLM.
+        reasons:  Mutable list that receives explanatory sentences.
+
+    Returns:
+        A tuple of (ward, zone_jurisdiction, municipal_body, jurisdiction_found).
+    """
+    result = lookup_location(location)
+
+    if result.found:
+        reasons.append(
+            f"Location '{location}' resolved to {result.ward}, "
+            f"{result.zone} ({result.municipal_body})."
+        )
+        return result.ward, result.zone, result.municipal_body, True
+
+    reasons.append(
+        f"Location '{location}' could not be mapped to a jurisdiction; "
+        "manual review recommended."
+    )
+    return None, None, None, False
+
+
+
+# =============================================================================
 # FALLBACK RESULT
 #
 # Used when Pydantic validation fails so the pipeline can continue
@@ -401,6 +445,11 @@ def _build_fallback_result(exc: Exception) -> dict[str, Any]:
         description=kb_fallback.description,
         default_explanation=kb_fallback.default_explanation,
         routing_status=kb_fallback.routing_status,
+        # Phase 2 — Jurisdiction fields (unknown on validation failure)
+        ward=None,
+        zone_jurisdiction=None,
+        municipal_body=None,
+        jurisdiction_found=False,
     ).model_dump()
 
 
@@ -552,7 +601,15 @@ def calculate_route(
     )
 
     # ------------------------------------------------------------------
-    # Step 8 — assemble result
+    # Step 8 — Phase 2: Jurisdiction & Geography
+    # ------------------------------------------------------------------
+
+    ward, zone_jurisdiction, municipal_body, jurisdiction_found = _resolve_jurisdiction(
+        validated.location, reasons
+    )
+
+    # ------------------------------------------------------------------
+    # Step 9 — assemble result
     # ------------------------------------------------------------------
 
     result = RoutingResult(
@@ -567,11 +624,17 @@ def calculate_route(
         description=kb_description,
         default_explanation=kb_explanation,
         routing_status=routing_status,
+        # Phase 2 — Jurisdiction fields
+        ward=ward,
+        zone_jurisdiction=zone_jurisdiction,
+        municipal_body=municipal_body,
+        jurisdiction_found=jurisdiction_found,
     )
 
     logger.info(
         "Routing completed | Department=%s (%s) | Team=%s | "
-        "Zone=%s | SLA=%dh | Escalation=%s | Status=%s",
+        "Zone=%s | SLA=%dh | Escalation=%s | Status=%s | "
+        "Ward=%s | MunicipalBody=%s | JurisdictionFound=%s",
         result.department,
         result.department_code,
         result.team,
@@ -579,6 +642,9 @@ def calculate_route(
         result.sla_hours,
         result.requires_escalation,
         result.routing_status,
+        result.ward,
+        result.municipal_body,
+        result.jurisdiction_found,
     )
     logger.info("=" * 80)
 
