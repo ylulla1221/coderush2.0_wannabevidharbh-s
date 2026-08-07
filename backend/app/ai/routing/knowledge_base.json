@@ -1,0 +1,258 @@
+{
+  "Road Damage": {
+    "department": "Road Department",
+    "department_code": "RD",
+    "sla_hours": 12,
+    "description": "Responsible for maintenance and repair of all public roads, highways, and road infrastructure within the municipal limits.",
+    "default_explanation": "Your complaint about road damage has been routed to the Road Department. A field team will assess and repair the damage within the committed SLA.",
+    "alternative_department": "Public Works Department"
+  },
+  "Open Manhole": {
+    "department": "Road Department",
+    "department_code": "RD",
+    "sla_hours": 6,
+    "description": "Responsible for maintenance and repair of all public roads, highways, and road infrastructure within the municipal limits.",
+    "default_explanation": "An open manhole is a public safety hazard. Your complaint has been escalated to the Road Department's Road Safety Team for immediate action.",
+    "alternative_department": "Public Safety Department"
+  },
+  "Footpath Damage": {
+    "department": "Road Department",
+    "department_code": "RD",
+    "sla_hours": 48,
+    "description": "Responsible for maintenance and repair of all public roads, highways, and road infrastructure within the municipal limits.",
+    "default_explanation": "Your complaint about footpath damage has been routed to the Road Department for assessment and repair.",
+    "alternative_department": "Public Works Department"
+  },
+  "Road Waterlogging": {
+    "department": "Road Department",
+    "department_code": "RD",
+    "sla_hours": 24,
+    "description": "Responsible for maintenance and repair of all public roads, highways, and road infrastructure within the municipal limits.",
+    "default_explanation": "Your complaint about road waterlogging has been routed to the Road Department's Drainage and Road Team.",
+    "alternative_department": "Water Supply Department"
+  },
+  "Water Leakage": {
+    "department": "Water Supply Department",
+    "department_code": "WSD",
+    "sla_hours": 12,
+    "description": "Responsible for the supply, distribution, and maintenance of the city's water supply network and pipelines.",
+    "default_explanation": "Your complaint about water leakage has been routed to the Water Supply Department's Pipeline Repair Team.",
+    "alternative_department": "Road Department"
+  },
+  "No Water Supply": {
+    "department": "Water Supply Department",
+    "department_code": "WSD",
+    "sla_hours": 12,
+    "description": "Responsible for the supply, distribution, and maintenance of the city's water supply network and pipelines.",
+    "default_explanation": "Your complaint about no water supply has been routed to the Water Supply Department's Water Distribution Team.",
+    "alternative_department": null
+  },
+  "Drainage Blocked": {
+    "department": "Water Supply Department",
+    "department_code": "WSD",
+    "sla_hours": 24,
+    "description": "Responsible for the supply, distribution, and maintenance of the city's water supply network and pipelines.",
+    "default_explanation": "Your complaint about blocked drainage has been routed to the Water Supply Department's Drainage Clearance Team.",
+    "alternative_department": "Road Department"
+  },
+  "Flooding": {
+    "department": "Water Supply Department",
+    "department_code": "WSD",
+    "sla_hours": 6,
+    "description": "Responsible for the supply, distribution, and maintenance of the city's water supply network and pipelines.",
+    "default_explanation": "A flooding complaint is a public safety hazard. Your complaint has been escalated to the Water Supply Department's Flood Response Team for immediate action.",
+    "alternative_department": "Public Safety Department"
+  },
+  "Sewage": {
+    "department": "Water Supply Department",
+    "department_code": "WSD",
+    "sla_hours": 12,
+    "description": "Responsible for the supply, distribution, and maintenance of the city's water supply network and pipelines.",
+    "default_explanation": "Your complaint about sewage issues has been routed to the Water Supply Department for assessment and repair.",
+    "alternative_department": "Sanitation Department"
+  },
+  "Garbage": {
+    "department": "Sanitation Department",
+    "department_code": "SD",
+    "sla_hours": 48,
+    "description": "Responsible for waste collection, garbage disposal, and maintaining cleanliness across all public areas in the city.",
+    "default_explanation": "Your garbage complaint has been routed to the Sanitation Department's Waste Collection Team.",
+    "alternative_department": null
+  },
+  "Garbage Dump": {
+    "department": "Sanitation Department",
+    "department_code": "SD",
+    "sla_hours": 48,
+    "description": "Responsible for waste collection, garbage disposal, and maintaining cleanliness across all public areas in the city.",
+    "default_explanation": "Your complaint about an illegal garbage dump has been routed to the Sanitation Department's Waste Clearance Team.",
+    "alternative_department": "Environmental Department"
+  },
+  "Illegal Dumping": {
+    "department": "Sanitation Department",
+    "department_code": "SD",
+    "sla_hours": 48,
+    "description": "Responsible for waste collection, garbage disposal, and maintaining cleanliness across all public areas in the city.",
+    "default_explanation": "Your complaint about illegal dumping has been routed to the Sanitation Department for investigation and clearance.",
+    "alternative_department": "Environmental Department"
+  },
+  "Dead Animal": {
+    "department": "Sanitation Department",
+    "department_code": "SD",
+    "sla_hours": 48,
+    "description": "Responsible for waste collection, garbage disposal, and maintaining cleanliness across all public areas in the city.",
+    "default_explanation": "Your complaint about a dead animal has been routed to the Sanitation Department's Animal Disposal Team.",
+    "alternative_department": "Public Safety Department"
+  },
+  "Open Defecation": {
+    "department": "Sanitation Department",
+    "department_code": "SD",
+    "sla_hours": 48,
+    "description": "Responsible for waste collection, garbage disposal, and maintaining cleanliness across all public areas in the city.",
+    "default_explanation": "Your complaint about open defecation has been routed to the Sanitation Department's Sanitation Enforcement Team.",
+    "alternative_department": null
+  },
+  "Street Light": {
+    "department": "Electricity Department",
+    "department_code": "ED",
+    "sla_hours": 24,
+    "description": "Responsible for the city's electrical infrastructure, public street lighting, and safe power distribution.",
+    "default_explanation": "Your complaint about a street light has been routed to the Electricity Department's Street Lighting Team.",
+    "alternative_department": null
+  },
+  "Broken Street Light": {
+    "department": "Electricity Department",
+    "department_code": "ED",
+    "sla_hours": 24,
+    "description": "Responsible for the city's electrical infrastructure, public street lighting, and safe power distribution.",
+    "default_explanation": "Your complaint about a broken street light has been routed to the Electricity Department's Street Lighting Team.",
+    "alternative_department": null
+  },
+  "Electrical Hazard": {
+    "department": "Electricity Department",
+    "department_code": "ED",
+    "sla_hours": 6,
+    "description": "Responsible for the city's electrical infrastructure, public street lighting, and safe power distribution.",
+    "default_explanation": "An electrical hazard is a life-threatening public safety emergency. Your complaint has been escalated to the Electricity Department's Emergency Electrical Team for immediate action.",
+    "alternative_department": "Public Safety Department"
+  },
+  "No Electricity": {
+    "department": "Electricity Department",
+    "department_code": "ED",
+    "sla_hours": 12,
+    "description": "Responsible for the city's electrical infrastructure, public street lighting, and safe power distribution.",
+    "default_explanation": "Your complaint about no electricity supply has been routed to the Electricity Department's Power Restoration Team.",
+    "alternative_department": null
+  },
+  "Tree Fallen": {
+    "department": "Parks Department",
+    "department_code": "PD",
+    "sla_hours": 6,
+    "description": "Responsible for the management and maintenance of public parks, trees, and green spaces within the city.",
+    "default_explanation": "A fallen tree is a public safety hazard. Your complaint has been escalated to the Parks Department's Tree Clearance Team for immediate action.",
+    "alternative_department": "Public Safety Department"
+  },
+  "Tree Hazard": {
+    "department": "Parks Department",
+    "department_code": "PD",
+    "sla_hours": 24,
+    "description": "Responsible for the management and maintenance of public parks, trees, and green spaces within the city.",
+    "default_explanation": "Your complaint about a tree hazard has been routed to the Parks Department's Tree Inspection Team.",
+    "alternative_department": "Public Safety Department"
+  },
+  "Park Maintenance": {
+    "department": "Parks Department",
+    "department_code": "PD",
+    "sla_hours": 72,
+    "description": "Responsible for the management and maintenance of public parks, trees, and green spaces within the city.",
+    "default_explanation": "Your complaint about park maintenance has been routed to the Parks Department's Parks Upkeep Team.",
+    "alternative_department": null
+  },
+  "Traffic Signal": {
+    "department": "Traffic Department",
+    "department_code": "TD",
+    "sla_hours": 24,
+    "description": "Responsible for the operation, maintenance, and enforcement of traffic systems and signals across the city.",
+    "default_explanation": "Your complaint about a traffic signal issue has been routed to the Traffic Department's Signal Maintenance Team.",
+    "alternative_department": "Electricity Department"
+  },
+  "Illegal Parking": {
+    "department": "Traffic Department",
+    "department_code": "TD",
+    "sla_hours": 48,
+    "description": "Responsible for the operation, maintenance, and enforcement of traffic systems and signals across the city.",
+    "default_explanation": "Your complaint about illegal parking has been routed to the Traffic Department's Traffic Enforcement Team.",
+    "alternative_department": null
+  },
+  "Broken Traffic Sign": {
+    "department": "Traffic Department",
+    "department_code": "TD",
+    "sla_hours": 48,
+    "description": "Responsible for the operation, maintenance, and enforcement of traffic systems and signals across the city.",
+    "default_explanation": "Your complaint about a broken traffic sign has been routed to the Traffic Department's Traffic Infrastructure Team.",
+    "alternative_department": "Road Department"
+  },
+  "Public Safety": {
+    "department": "Public Safety Department",
+    "department_code": "PSD",
+    "sla_hours": 12,
+    "description": "Responsible for maintaining public safety, managing safety hazards, and coordinating emergency responses across the city.",
+    "default_explanation": "Your public safety complaint has been escalated to the Public Safety Department's Safety Response Team for immediate assessment.",
+    "alternative_department": null
+  },
+  "Stray Animals": {
+    "department": "Public Safety Department",
+    "department_code": "PSD",
+    "sla_hours": 12,
+    "description": "Responsible for maintaining public safety, managing safety hazards, and coordinating emergency responses across the city.",
+    "default_explanation": "Your complaint about stray animals has been routed to the Public Safety Department's Animal Control Team.",
+    "alternative_department": "Sanitation Department"
+  },
+  "Fire Hazard": {
+    "department": "Public Safety Department",
+    "department_code": "PSD",
+    "sla_hours": 6,
+    "description": "Responsible for maintaining public safety, managing safety hazards, and coordinating emergency responses across the city.",
+    "default_explanation": "A fire hazard is a public safety emergency. Your complaint has been escalated to the Public Safety Department's Fire Safety Team for immediate action.",
+    "alternative_department": null
+  },
+  "Public Property Damage": {
+    "department": "Public Works Department",
+    "department_code": "PWD",
+    "sla_hours": 48,
+    "description": "Responsible for maintaining and repairing public infrastructure, civic buildings, and public property across the city.",
+    "default_explanation": "Your complaint about public property damage has been routed to the Public Works Department for assessment and repair.",
+    "alternative_department": "Road Department"
+  },
+  "Illegal Construction": {
+    "department": "Town Planning Department",
+    "department_code": "TPD",
+    "sla_hours": 72,
+    "description": "Responsible for urban planning, building regulation enforcement, and preventing illegal construction and encroachments.",
+    "default_explanation": "Your complaint about illegal construction has been routed to the Town Planning Department's Enforcement and Survey Team for investigation.",
+    "alternative_department": "Public Works Department"
+  },
+  "Encroachment": {
+    "department": "Town Planning Department",
+    "department_code": "TPD",
+    "sla_hours": 72,
+    "description": "Responsible for urban planning, building regulation enforcement, and preventing illegal construction and encroachments.",
+    "default_explanation": "Your complaint about encroachment has been routed to the Town Planning Department's Enforcement and Survey Team for investigation.",
+    "alternative_department": "Public Works Department"
+  },
+  "Noise Pollution": {
+    "department": "Environmental Department",
+    "department_code": "ENVD",
+    "sla_hours": 72,
+    "description": "Responsible for monitoring and enforcing environmental standards including noise levels, air quality, and pollution control.",
+    "default_explanation": "Your complaint about noise pollution has been routed to the Environmental Department's Environmental Monitoring Team.",
+    "alternative_department": "Public Safety Department"
+  },
+  "Air Pollution": {
+    "department": "Environmental Department",
+    "department_code": "ENVD",
+    "sla_hours": 72,
+    "description": "Responsible for monitoring and enforcing environmental standards including noise levels, air quality, and pollution control.",
+    "default_explanation": "Your complaint about air pollution has been routed to the Environmental Department's Environmental Monitoring Team.",
+    "alternative_department": null
+  }
+}

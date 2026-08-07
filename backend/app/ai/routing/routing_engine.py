@@ -60,6 +60,7 @@ from typing import Any
 
 from . import config, constants
 from .exceptions import RoutingValidationError
+from .knowledge_base import get_fallback_route, lookup_category
 from .models import RoutingInput, RoutingResult
 
 logger = logging.getLogger("civicflow.ai.routing")
@@ -311,10 +312,68 @@ def _resolve_escalation(
 
 
 # =============================================================================
+# PRIVATE — PHASE 1: KNOWLEDGE BASE METADATA
+#
+# Resolves department_code, description, default_explanation, and
+# routing_status from the Routing Knowledge Base.  This is kept as a
+# separate helper so it is independently testable and does not interfere
+# with the existing _resolve_department / _resolve_team / _resolve_zone
+# helpers which continue to work exactly as before.
+# =============================================================================
+
+
+def _resolve_kb_metadata(
+    category: str | None,
+    reasons: list[str],
+) -> tuple[str | None, str | None, str | None, str]:
+    """Look up Phase 1 Routing Knowledge Base metadata for a category.
+
+    This helper is the ONLY function that reads from the knowledge base.
+    All duplicate-decision, escalation, SLA, team, and zone logic is
+    unchanged and still uses the flat lookup tables in constants.py.
+
+    Args:
+        category: Civic issue category string from the Vision LLM.
+        reasons: Mutable list that receives an explanatory sentence.
+
+    Returns:
+        A tuple of
+        (department_code, description, default_explanation, routing_status).
+    """
+    route = lookup_category(category)
+
+    if route is not None:
+        reasons.append(
+            f"Knowledge Base matched category '{category}' to "
+            f"department '{route.department}' "
+            f"(code: {route.department_code})."
+        )
+        return (
+            route.department_code,
+            route.description,
+            route.default_explanation,
+            route.routing_status,
+        )
+
+    # Unknown category — return the safe fallback values
+    fallback = get_fallback_route()
+    reasons.append(
+        f"Category '{category}' not found in Routing Knowledge Base; "
+        "flagged for manual review."
+    )
+    return (
+        fallback.department_code,
+        fallback.description,
+        fallback.default_explanation,
+        fallback.routing_status,
+    )
+
+
+# =============================================================================
 # FALLBACK RESULT
 #
 # Used when Pydantic validation fails so the pipeline can continue
-# instead of crashing. The fallback is logged at ERROR level.
+# instead of crashing.  The fallback is logged at ERROR level.
 # =============================================================================
 
 def _build_fallback_result(exc: Exception) -> dict[str, Any]:
@@ -326,6 +385,7 @@ def _build_fallback_result(exc: Exception) -> dict[str, Any]:
     Returns:
         Dictionary representation of a default RoutingResult.
     """
+    kb_fallback = get_fallback_route()
     return RoutingResult(
         department=config.DEFAULT_DEPARTMENT,
         team=config.DEFAULT_TEAM,
@@ -336,6 +396,11 @@ def _build_fallback_result(exc: Exception) -> dict[str, Any]:
             "Input validation failed; fallback routing applied.",
             f"Cause: {exc}",
         ],
+        # Phase 1 — KB fields
+        department_code=kb_fallback.department_code,
+        description=kb_fallback.description,
+        default_explanation=kb_fallback.default_explanation,
+        routing_status=kb_fallback.routing_status,
     ).model_dump()
 
 
@@ -479,7 +544,15 @@ def calculate_route(
     )
 
     # ------------------------------------------------------------------
-    # Step 7 — assemble result
+    # Step 7 — Phase 1: Routing Knowledge Base metadata
+    # ------------------------------------------------------------------
+
+    dept_code, kb_description, kb_explanation, routing_status = _resolve_kb_metadata(
+        validated.category, reasons
+    )
+
+    # ------------------------------------------------------------------
+    # Step 8 — assemble result
     # ------------------------------------------------------------------
 
     result = RoutingResult(
@@ -489,16 +562,23 @@ def calculate_route(
         sla_hours=sla_hours,
         requires_escalation=requires_escalation,
         routing_reason=reasons,
+        # Phase 1 — KB fields
+        department_code=dept_code,
+        description=kb_description,
+        default_explanation=kb_explanation,
+        routing_status=routing_status,
     )
 
     logger.info(
-        "Routing completed | Department=%s | Team=%s | "
-        "Zone=%s | SLA=%dh | Escalation=%s",
+        "Routing completed | Department=%s (%s) | Team=%s | "
+        "Zone=%s | SLA=%dh | Escalation=%s | Status=%s",
         result.department,
+        result.department_code,
         result.team,
         result.zone,
         result.sla_hours,
         result.requires_escalation,
+        result.routing_status,
     )
     logger.info("=" * 80)
 

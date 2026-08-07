@@ -147,3 +147,30 @@ class RoutingResult(BaseModel):
             "Ordered human-readable explanations for every routing decision."
         ),
     )
+
+    # -------------------------------------------------------------------------
+    # Phase 1 — Routing Knowledge Base fields
+    # -------------------------------------------------------------------------
+
+    department_code: str | None = Field(
+        default=None,
+        description="Short alphanumeric code for the assigned department.",
+    )
+
+    description: str | None = Field(
+        default=None,
+        description="What the assigned department does.",
+    )
+
+    default_explanation: str | None = Field(
+        default=None,
+        description="Citizen-facing explanation for why this complaint was routed here.",
+    )
+
+    routing_status: str = Field(
+        default="success",
+        description=(
+            '"success" when a known category matched; '
+            '"manual_review" when the category was unrecognised.'
+        ),
+    )
