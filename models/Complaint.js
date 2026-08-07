@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const complaintSchema = new mongoose.Schema({
   title: String,
-  category: String,
+  category: { type: String, required: true },
   description: String,
   landmark: String,
   city: String,

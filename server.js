@@ -480,11 +480,13 @@ app.get('/api/sql/dump', async (req, res) => {
 // 14. GET /api/issues (Fetch all issues resolved as map markers)
 app.get('/api/issues', async (req, res) => {
   try {
-    const complaints = await Complaint.find().sort({ createdAt: -1 });
+    const complaints = await Complaint.find({});
     res.json(complaints.map(c => ({
       id: c._id.toString(),
       title: c.title || `${c.category} Issue`,
+      category: c.category,
       description: c.description,
+      status: c.status,
       latitude: c.location.coordinates[1],
       longitude: c.location.coordinates[0],
       created_at: c.createdAt
@@ -496,14 +498,17 @@ app.get('/api/issues', async (req, res) => {
 
 // 15. POST /api/issues (Create new issue)
 app.post('/api/issues', async (req, res) => {
-  let { title, description, latitude, longitude, extracted_location } = req.body;
-  if (!title || !description) {
-    return res.status(400).json({ error: 'Missing title or description' });
+  let { title, description, latitude, longitude, landmark, city, category, priority, status } = req.body;
+  if (!category && title) category = 'Road Repair / Pothole';
+  if (!title && category) title = `${category} Report`;
+
+  if (!description) {
+    return res.status(400).json({ error: 'Missing description' });
   }
 
-  // Geocode missing or invalid coordinates
+  // Geocode if missing
   if (latitude === undefined || longitude === undefined || latitude === null || longitude === null || isNaN(parseFloat(latitude)) || isNaN(parseFloat(longitude))) {
-    const searchLoc = extracted_location || title;
+    const searchLoc = (landmark && city) ? `${landmark}, ${city}` : (title || 'Pune, Maharashtra');
     try {
       const coords = await getCoordsFromAddress(searchLoc);
       latitude = coords.lat;
@@ -517,30 +522,31 @@ app.post('/api/issues', async (req, res) => {
 
   try {
     const newComplaint = await Complaint.create({
-      title,
-      category: 'Road Repair / Pothole',
+      title: title || `${category} at ${landmark || 'Pune'}`,
+      category: category || 'Road Repair / Pothole',
       description,
-      landmark: title.split(',')[0],
-      city: 'Nagpur',
-      priority: 'MODERATE',
+      landmark: landmark || 'Pune Center',
+      city: city || 'Pune',
+      priority: (priority || 'MODERATE').toUpperCase(),
       location: {
         type: 'Point',
         coordinates: [parseFloat(longitude), parseFloat(latitude)] // [lng, lat]
       },
-      address: extracted_location || title,
+      address: landmark && city ? `${landmark}, ${city}` : (title || 'Pune, Maharashtra'),
       reporter: {
         name: 'Resident',
         contact: 'contact@municipal.gov'
       },
-      status: 'PENDING'
+      status: status || 'PENDING'
     });
 
     res.status(201).json({
       success: true,
       issue: {
         id: newComplaint._id.toString(),
-        title,
-        description,
+        category: newComplaint.category,
+        description: newComplaint.description,
+        status: newComplaint.status,
         latitude,
         longitude
       }
