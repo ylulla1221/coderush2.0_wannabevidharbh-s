@@ -30,6 +30,8 @@ from .config import (
     QDRANT_COLLECTION,
     QDRANT_HOST,
     QDRANT_PORT,
+    QDRANT_URL,
+    QDRANT_API_KEY,
 )
 from .exceptions import VectorStoreError
 
@@ -107,6 +109,28 @@ def _get_client() -> Any:
                 f"Failed to connect to Qdrant at "
                 f"{QDRANT_HOST}:{QDRANT_PORT}: {exc}"
             ) from exc
+
+
+def _handle_qdrant_error(exc: Exception, context_msg: str) -> VectorStoreError:
+    """Helper to classify and wrap Qdrant exceptions into VectorStoreError.
+    
+    Distinguishes between connection errors, authentication errors, and other API errors.
+    """
+    import httpx
+    try:
+        from qdrant_client.http.exceptions import UnexpectedResponse
+    except ImportError:
+        UnexpectedResponse = None
+
+    if isinstance(exc, httpx.ConnectError):
+        return VectorStoreError(f"Connection error: Unable to reach Qdrant server. {exc}")
+    
+    if UnexpectedResponse and isinstance(exc, UnexpectedResponse):
+        if exc.status_code in (401, 403):
+            return VectorStoreError(f"Authentication error: Invalid API key or unauthorized. {exc}")
+        return VectorStoreError(f"API error [{exc.status_code}]: {exc}")
+
+    return VectorStoreError(f"{context_msg}: {exc}")
 
 
 def _ensure_collection() -> None:
