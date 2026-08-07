@@ -1,0 +1,78 @@
+{
+    "status": "success",
+    "pipeline_version": "1.0.0",
+    "execution_time_seconds": 26.782,
+    "input": {
+        "complaint_text": "\nThere is a huge pothole near VIT Pune Main Gate.\n\nThe pothole has become dangerous after heavy rainfall.\n\nMany two-wheelers have slipped.\n\nPlease repair it immediately before someone gets seriously injured.\n",
+        "image_path": null,
+        "location": "VIT Pune"
+    },
+    "complaint": {
+        "category": "Road Damage",
+        "department": "Public Works Department",
+        "urgency": "Critical",
+        "location": "Near VIT Pune Main Gate, VIT Pune",
+        "summary": "A large pothole near the VIT Pune main gate has become hazardous after heavy rainfall, causing multiple two-wheeler slips and requiring immediate repair to prevent serious injuries.",
+        "confidence": 0.95
+    },
+    "analysis": {
+        "duplicate": {
+            "is_duplicate": true,
+            "duplicate_type": "duplicate",
+            "cluster_id": "cluster_778f040d",
+            "matched_complaint_id": "cmp_f4b6df75",
+            "cluster_size": 5,
+            "similarity_score": 0.9941,
+            "reason": [
+                "High semantic similarity",
+                "Same category",
+                "Nearby location"
+            ]
+        },
+        "priority": {
+            "priority_score": 75.0,
+            "priority_level": "High",
+            "breakdown": {
+                "urgency": 35.0,
+                "category": 20.0,
+                "community_impact": 10.0,
+                "confidence": 10.0,
+                "sla_risk": 0.0
+            },
+            "reasons": [
+                "Critical urgency identified by Vision AI.",
+                "Road Damage has elevated civic impact.",
+                "5 similar complaints indicate community impact.",
+                "High AI confidence in complaint analysis.",
+                "Final priority score is 75.0 (High)."
+            ]
+        },
+        "routing": {
+            "department": "Road Department",
+            "team": "Road Maintenance Team",
+            "zone": "Zone A",
+            "sla_hours": 12,
+            "requires_escalation": true,
+            "routing_reason": [
+                "Category 'Road Damage' maps to 'Road Department'.",
+                "Complaint assigned to 'Road Maintenance Team'.",
+                "Complaint routed to geographic 'Zone A'.",
+                "Base SLA for 'Road Damage' is 12 hours.",
+                "Base SLA (12 h) is already stricter than 'High' priority SLA (12 h); base SLA retained.",
+                "'High' priority level triggers escalation."
+            ]
+        }
+    },
+    "summary": {
+        "category": "Road Damage",
+        "urgency": "Critical",
+        "is_duplicate": true,
+        "priority": "High",
+        "priority_score": 75.0,
+        "department": "Road Department",
+        "team": "Road Maintenance Team",
+        "zone": "Zone A",
+        "sla_hours": 12,
+        "requires_escalation": true
+    }
+}
