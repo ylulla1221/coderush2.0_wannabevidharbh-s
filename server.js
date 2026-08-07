@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const { db, getAsync, allAsync, runAsync } = require('./db');
+const { getAddressFromCoords, getCoordsFromAddress } = require('./geocoder');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -461,6 +462,36 @@ app.post('/api/issues', async (req, res) => {
         longitude
       }
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 15. GET /api/geocode/reverse (Reverse geocoding endpoint)
+app.get('/api/geocode/reverse', async (req, res) => {
+  const { lat, lng } = req.query;
+  if (!lat || !lng) {
+    return res.status(400).json({ error: 'Missing lat or lng parameter' });
+  }
+
+  try {
+    const address = await getAddressFromCoords(lat, lng);
+    res.json({ address });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 16. GET /api/geocode/search (Forward geocoding endpoint)
+app.get('/api/geocode/search', async (req, res) => {
+  const { q } = req.query;
+  if (!q) {
+    return res.status(400).json({ error: 'Missing q (query) parameter' });
+  }
+
+  try {
+    const coords = await getCoordsFromAddress(q);
+    res.json(coords);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

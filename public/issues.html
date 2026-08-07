@@ -106,7 +106,7 @@
             <div class="flex gap-2">
               <div class="relative flex-grow">
                 <span class="material-symbols-outlined absolute left-2.5 top-2 text-gray-400 text-base">search</span>
-                <input type="text" id="form-address" placeholder="E.g., FC Road, Pune" class="w-full pl-8 pr-2 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-secondary focus:border-secondary text-xs"/>
+                <input type="text" id="address" placeholder="E.g., FC Road, Pune" class="w-full pl-8 pr-2 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-secondary focus:border-secondary text-xs"/>
               </div>
               <button type="button" onclick="geocodeAddress()" class="bg-primary hover:bg-[#001c4a] text-white px-3 py-1.5 rounded text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-all">
                 <span class="material-symbols-outlined text-sm">location_searching</span> Find
@@ -200,11 +200,22 @@
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(map);
 
-      // Listen for click event to drop custom marker
-      map.on('click', (e) => {
+      // Listen for click event to drop custom marker & reverse geocode address
+      map.on('click', async (e) => {
         const { lat, lng } = e.latlng;
         setFormCoordinates(lat, lng);
         placeClickMarker(lat, lng);
+        
+        // Fetch reverse geocode address from our backend proxy endpoint
+        try {
+          const res = await fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}`);
+          const data = await res.json();
+          if (data && data.address) {
+            document.getElementById('address').value = data.address;
+          }
+        } catch (err) {
+          console.error('Error reverse geocoding click:', err);
+        }
       });
 
       // Load existing issues on load
@@ -227,9 +238,19 @@
 
         clickMarker = L.marker([lat, lng], { icon: customIcon, draggable: true }).addTo(map);
         
-        clickMarker.on('dragend', () => {
+        clickMarker.on('dragend', async () => {
           const pos = clickMarker.getLatLng();
           setFormCoordinates(pos.lat, pos.lng);
+          
+          try {
+            const res = await fetch(`/api/geocode/reverse?lat=${pos.lat}&lng=${pos.lng}`);
+            const data = await res.json();
+            if (data && data.address) {
+              document.getElementById('address').value = data.address;
+            }
+          } catch (err) {
+            console.error('Error reverse geocoding drag:', err);
+          }
         });
       }
     }
@@ -242,9 +263,9 @@
       document.getElementById('display-lng').textContent = lng.toFixed(6);
     }
 
-    // Geocode typed address using OpenStreetMap Nominatim API
+    // Geocode typed address using our new backend forward geocoding proxy
     async function geocodeAddress() {
-      const address = document.getElementById('form-address').value.trim();
+      const address = document.getElementById('address').value.trim();
       if (!address) {
         showToast('Please type an address or landmark first.', 'error');
         return;
@@ -253,13 +274,12 @@
       showToast('Searching location...');
       
       try {
-        const query = encodeURIComponent(`${address}, Pune, India`);
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
+        const res = await fetch(`/api/geocode/search?q=${encodeURIComponent(address)}`);
         const data = await res.json();
 
-        if (data && data.length > 0) {
-          const lat = parseFloat(data[0].lat);
-          const lng = parseFloat(data[0].lon);
+        if (data && data.lat && data.lon) {
+          const lat = parseFloat(data.lat);
+          const lng = parseFloat(data.lon);
 
           setFormCoordinates(lat, lng);
           placeClickMarker(lat, lng);
@@ -293,12 +313,12 @@
           map.setView([lat, lng], 15);
           showToast('Acquired current GPS coordinate locks.');
 
-          // Reverse geocode to fill in address input
+          // Reverse geocode to fill in address input using our backend proxy
           try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+            const res = await fetch(`/api/geocode/reverse?lat=${lat}&lng=${lng}`);
             const data = await res.json();
-            if (data && data.display_name) {
-              document.getElementById('form-address').value = data.display_name;
+            if (data && data.address) {
+              document.getElementById('address').value = data.address;
             }
           } catch (e) {
             console.error('Reverse geocoding error:', e);
