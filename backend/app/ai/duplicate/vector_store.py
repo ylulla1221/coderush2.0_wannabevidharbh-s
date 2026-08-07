@@ -346,8 +346,8 @@ def health_check() -> dict[str, Any]:
     """
     health: dict[str, Any] = {
         "status": "unhealthy",
-        "host": QDRANT_HOST,
-        "port": QDRANT_PORT,
+        "host": QDRANT_URL if QDRANT_URL else QDRANT_HOST,
+        "port": QDRANT_PORT if not QDRANT_URL else None,
         "collection": QDRANT_COLLECTION,
         "vector_count": 0,
         "error": None,
@@ -369,11 +369,15 @@ def health_check() -> dict[str, Any]:
         )
 
     except Exception as exc:
-        health["error"] = str(exc)
+        try:
+            err = _handle_qdrant_error(exc, "Health check failed")
+            health["error"] = str(err)
+        except Exception:
+            health["error"] = str(exc)
 
         logger.warning(
             "Vector store health check failed: %s",
-            exc,
+            health["error"],
         )
 
     return health
