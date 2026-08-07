@@ -445,7 +445,7 @@ const ResidentPortal = {
     }
 
     // -- Extract Name --
-    const nameMatches = text.match(/(?:my name is|this is|i am|reporter is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/);
+    const nameMatches = text.match(/(?:my name is|this is|i am|reporter is)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)/i);
     if (nameMatches && nameMatches[1]) {
       this.chatState.draft.name = nameMatches[1].trim();
     }
