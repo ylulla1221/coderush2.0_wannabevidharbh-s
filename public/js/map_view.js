@@ -26,14 +26,14 @@ const MapViewTab = {
     this.maps = [];
     this.markerGroups = [];
 
-    // Define 6 sectors and coordinates
+    // Define 6 sectors centered on Nagpur, India
     const sectors = [
-      { id: 'grid-map-1', name: 'Downtown Sector', center: [41.8781, -87.6298], zoom: 14 },
-      { id: 'grid-map-2', name: 'Westside Subsector', center: [41.8756, -87.6244], zoom: 14 },
-      { id: 'grid-map-3', name: 'North Hills Sector', center: [41.8835, -87.6321], zoom: 14 },
-      { id: 'grid-map-4', name: 'South End Sector', center: [41.8818, -87.6278], zoom: 14 },
-      { id: 'grid-map-5', name: 'Ward 12 Central', center: [41.8850, -87.6350], zoom: 14 },
-      { id: 'grid-map-6', name: 'Industrial Corridor', center: [41.8795, -87.6255], zoom: 14 }
+      { id: 'grid-map-1', name: 'Central Nagpur', center: [21.1458, 79.0882], zoom: 14 },
+      { id: 'grid-map-2', name: 'Sitabuldi / Civil Lines', center: [21.1501, 79.0820], zoom: 14 },
+      { id: 'grid-map-3', name: 'Hingna Road / YCCE', center: [21.0969, 79.0193], zoom: 14 },
+      { id: 'grid-map-4', name: 'Wardha Road / Pratap Nagar', center: [21.1022, 79.0520], zoom: 14 },
+      { id: 'grid-map-5', name: 'Dharampeth / CP Area', center: [21.1533, 79.0614], zoom: 14 },
+      { id: 'grid-map-6', name: 'Amravati Road / Mankapur', center: [21.1680, 79.0490], zoom: 14 }
     ];
 
     sectors.forEach((sec, idx) => {
@@ -72,7 +72,7 @@ const MapViewTab = {
     this.markerGroups.forEach(g => g.clearLayers());
 
     // Filter complaints by category
-    let complaints = window.appState.cachedComplaints.filter(c => c.status !== 'Resolved' && c.lat && c.lng);
+    let complaints = window.appState.cachedComplaints.filter(c => c.status !== 'Resolved' && (c.latitude || c.lat) && (c.longitude || c.lng));
     if (this.currentCategory !== 'All') {
       if (this.currentCategory === 'Infrastructure') {
         complaints = complaints.filter(c => c.category.includes('Road') || c.category.includes('Supply') || c.category.includes('Streetlight'));
@@ -83,9 +83,12 @@ const MapViewTab = {
 
     // Add markers to all active maps in the grid
     complaints.forEach(c => {
+      const cLat = c.latitude || c.lat;
+      const cLng = c.longitude || c.lng;
+
       let color = '#3b82f6';
-      if (c.priority === 'Urgent') color = '#ef4444';
-      else if (c.priority === 'Low') color = '#10b981';
+      if (c.priority === 'CRITICAL' || c.priority === 'HIGH' || c.priority === 'Urgent') color = '#ef4444';
+      else if (c.priority === 'LOW' || c.priority === 'Low') color = '#10b981';
 
       // Custom marker icon using HTML/CSS
       const customIcon = L.divIcon({
@@ -98,21 +101,20 @@ const MapViewTab = {
       });
 
       this.markerGroups.forEach((g, mapIdx) => {
-        // Calculate distance from map center to prevent mapping markers that are miles away from the sector
         const mapCenter = this.maps[mapIdx].getCenter();
-        const markerLatLng = L.latLng(c.lat, c.lng);
+        const markerLatLng = L.latLng(cLat, cLng);
         const distance = mapCenter.distanceTo(markerLatLng);
 
-        // Show marker if it's within 1.5km of map center, or show all if in full screen single map mode
-        if (distance < 1500 || !this.isSplitGrid) {
-          L.marker([c.lat, c.lng], { icon: customIcon })
+        if (distance < 5000 || !this.isSplitGrid) {
+          L.marker([cLat, cLng], { icon: customIcon })
             .addTo(g)
             .bindPopup(`
               <div class="text-xs space-y-1">
-                <span class="font-bold text-primary uppercase block">${c.id}</span>
+                <span class="font-bold text-primary uppercase block">${c.id || c._id || ''}</span>
                 <span class="text-on-surface-variant font-medium">${c.category}</span>
                 <p class="text-on-surface line-clamp-2">${c.description}</p>
-                <button onclick="OverviewTab.inspectDetails('${c.id}')" class="text-[10px] text-secondary font-bold hover:underline block mt-1">Inspect Details</button>
+                <p class="text-gray-500 text-[10px]">${c.address || c.landmark || ''}</p>
+                <span class="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold ${c.status === 'RESOLVED' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">${c.status}</span>
               </div>
             `);
         }
