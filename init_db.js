@@ -6,8 +6,12 @@ const dbPath = path.join(__dirname, 'civicpulse.db');
 
 // Delete existing database for a clean start if running init script manually
 if (fs.existsSync(dbPath)) {
-  fs.unlinkSync(dbPath);
-  console.log('Removed existing database.');
+  try {
+    fs.unlinkSync(dbPath);
+    console.log('Removed existing database.');
+  } catch (err) {
+    console.log('Database file exists and is locked. Proceeding without deleting it.');
+  }
 }
 
 const db = new sqlite3.Database(dbPath, (err) => {
@@ -72,6 +76,17 @@ db.serialize(() => {
       performed_by VARCHAR(100) NOT NULL,
       details TEXT,
       timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS issues (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title VARCHAR(255) NOT NULL,
+      description TEXT NOT NULL,
+      latitude DECIMAL(10, 8) NOT NULL,
+      longitude DECIMAL(11, 8) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
@@ -150,6 +165,16 @@ db.serialize(() => {
   stmtAudit.run(502, 'INC-2026-0412', 'CLUSTER_LINKED_N8_ESCALATED', 'SPATIAL_CLUSTER_ENGINE', '2026-08-07 09:45:00', 'Centroid score 0.89');
   stmtAudit.run(503, 'CR-2026-08912', 'ESCALATION_TRIGGER_AUTOMATED', 'SLA_MONITOR_SERVICE', '2026-08-07 10:15:00', 'Re-routed to ASSISTANT_EXECUTIVE_ENGINEER');
   stmtAudit.finalize();
+
+  // 6. Seed Issues (Pune)
+  const stmtIssue = db.prepare(`
+    INSERT INTO issues (title, description, latitude, longitude)
+    VALUES (?, ?, ?, ?)
+  `);
+  stmtIssue.run('Water Logging at FC Road', 'Severe water logging near Goodluck Cafe after heavy rains.', 18.5218, 73.8486);
+  stmtIssue.run('Pothole near Shaniwar Wada', 'Dangerous pothole at the main intersection causing traffic congestion.', 18.5204, 73.8567);
+  stmtIssue.run('Garbage Pile near JM Road', 'Overflowing community bin spreading foul smell.', 18.5255, 73.8441);
+  stmtIssue.finalize();
 
   console.log('Seeded database successfully.');
 });

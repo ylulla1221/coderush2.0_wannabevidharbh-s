@@ -428,6 +428,44 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
+// 13. GET /api/issues (Fetch all issues)
+app.get('/api/issues', async (req, res) => {
+  try {
+    const rows = await allAsync('SELECT * FROM issues ORDER BY created_at DESC');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 14. POST /api/issues (Create a new issue)
+app.post('/api/issues', async (req, res) => {
+  const { title, description, latitude, longitude } = req.body;
+  if (!title || !description || latitude === undefined || longitude === undefined) {
+    return res.status(400).json({ error: 'Missing title, description, latitude, or longitude' });
+  }
+
+  try {
+    const result = await runAsync(`
+      INSERT INTO issues (title, description, latitude, longitude)
+      VALUES (?, ?, ?, ?)
+    `, [title, description, latitude, longitude]);
+
+    res.status(201).json({
+      success: true,
+      issue: {
+        id: result.id,
+        title,
+        description,
+        latitude,
+        longitude
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Start Server
 app.listen(PORT, () => {
   console.log(`CivicPulse backend server running on port ${PORT}`);

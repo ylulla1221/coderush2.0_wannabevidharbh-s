@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>CivicPulse - Pune Issues Tracker</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  
+  <!-- Google Fonts & Material Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1" rel="stylesheet"/>
+  
+  <!-- Leaflet Map CSS and JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  
+  <!-- Tailwind Config Customization -->
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            primary: "#001334",
+            secondary: "#006a61",
+            background: "#fbf8fa",
+            surface: "#fbf8fa",
+            "surface-container": "#f0edef",
+            "outline-variant": "#c5c6cd"
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--background);
+    }
+    #map {
+      height: 500px;
+      z-index: 1;
+    }
+    /* Custom Leaflet Popup Styling */
+    .leaflet-popup-content-wrapper {
+      border-radius: 12px;
+      padding: 4px;
+      border: 1px solid var(--outline-variant);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .leaflet-popup-tip-container {
+      display: none;
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-800 flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-primary text-white border-b border-outline-variant/10 shadow-sm py-4 px-6 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <span class="material-symbols-outlined text-secondary text-3xl font-bold">map</span>
+      <div>
+        <h1 class="text-xl font-bold tracking-tight">CivicPulse</h1>
+        <p class="text-[10px] text-gray-400">Pune Municipal Redressal Map</p>
+      </div>
+    </div>
+    <a href="/index.html" class="flex items-center gap-1.5 text-xs text-secondary font-semibold hover:underline">
+      <span class="material-symbols-outlined text-sm">dashboard</span> Go to Dashboard
+    </a>
+  </header>
+
+  <!-- Main Body -->
+  <main class="flex-grow container mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+    
+    <!-- Left Panel: Issue Form (4 Cols) -->
+    <div class="lg:col-span-4 space-y-6">
+      <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-5">
+        <div>
+          <h2 class="text-lg font-bold text-primary flex items-center gap-2">
+            <span class="material-symbols-outlined text-secondary">report_problem</span>
+            Report a Civic Issue
+          </h2>
+          <p class="text-xs text-gray-500 mt-1">Select the location on the map, provide details below, and submit the report.</p>
+        </div>
+
+        <form id="issue-form" class="space-y-4 text-xs">
+          <!-- Hidden inputs for coordinates -->
+          <input type="hidden" id="form-latitude" name="latitude"/>
+          <input type="hidden" id="form-longitude" name="longitude"/>
+
+          <div>
+            <label class="block font-semibold text-primary mb-1">Issue Title <span class="text-red-500">*</span></label>
+            <input type="text" id="form-title" required placeholder="E.g., Pothole on FC Road" class="w-full p-2.5 border border-gray-300 rounded focus:ring-1 focus:ring-secondary focus:border-secondary text-xs"/>
+          </div>
+
+          <div>
+            <label class="block font-semibold text-primary mb-1">Detailed Description <span class="text-red-500">*</span></label>
+            <textarea id="form-description" rows="4" required placeholder="Please describe the issue in detail..." class="w-full p-2.5 border border-gray-300 rounded focus:ring-1 focus:ring-secondary focus:border-secondary text-xs"></textarea>
+          </div>
+
+          <!-- Latitude/Longitude display indicator -->
+          <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 font-mono text-[10px] space-y-1">
+            <span class="text-gray-400 block uppercase font-sans font-bold tracking-wider">Selected Location</span>
+            <div class="flex justify-between">
+              <span>LATITUDE:</span>
+              <span id="display-lat" class="text-primary font-bold">Click on map</span>
+            </div>
+            <div class="flex justify-between">
+              <span>LONGITUDE:</span>
+              <span id="display-lng" class="text-primary font-bold">Click on map</span>
+            </div>
+          </div>
+
+          <button type="submit" class="w-full bg-secondary hover:bg-[#00524b] text-white font-bold py-2.5 rounded transition-all active:scale-95 flex items-center justify-center gap-1.5 text-xs shadow-sm">
+            <span class="material-symbols-outlined text-sm">send</span>
+            Log Issue in Database
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Right Panel: Leaflet Map (8 Cols) -->
+    <div class="lg:col-span-8 flex flex-col space-y-4">
+      <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col flex-grow">
+        <div class="flex justify-between items-center mb-3">
+          <span class="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm">pin_drop</span> Interactive Issues Map (Pune)
+          </span>
+          <span class="text-[10px] text-gray-500 italic">Click on map to drop a new marker</span>
+        </div>
+        <div id="map" class="rounded-lg border border-gray-200 shadow-inner"></div>
+      </div>
+    </div>
+    
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="hidden fixed bottom-6 right-6 z-[2000] bg-gray-900 text-white text-xs px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 transition-all">
+    <span id="toast-icon" class="material-symbols-outlined text-secondary">info</span>
+    <span id="toast-text">Toast message</span>
+  </div>
+
+  <script>
+    // Config
+    const PUNE_CENTER = [18.5204, 73.8567];
+    let map, clickMarker;
+    let existingMarkers = [];
+
+    // Helper: Show Toast
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const text = document.getElementById('toast-text');
+      const icon = document.getElementById('toast-icon');
+      
+      text.textContent = message;
+      if (type === 'error') {
+        icon.textContent = 'error';
+        icon.className = 'material-symbols-outlined text-red-500';
+      } else {
+        icon.textContent = 'check_circle';
+        icon.className = 'material-symbols-outlined text-secondary';
+      }
+      
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3000);
+    }
+
+    // Initialize Map
+    function initMap() {
+      map = L.map('map', {
+        zoomControl: true,
+        attributionControl: false
+      }).setView(PUNE_CENTER, 13);
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+
+      // Listen for click event to drop custom marker
+      map.on('click', (e) => {
+        const { lat, lng } = e.latlng;
+        setFormCoordinates(lat, lng);
+        placeClickMarker(lat, lng);
+      });
+
+      // Load existing issues on load
+      loadExistingIssues();
+    }
+
+    // Place new click marker
+    function placeClickMarker(lat, lng) {
+      if (clickMarker) {
+        clickMarker.setLatLng([lat, lng]);
+      } else {
+        const customIcon = L.icon({
+          iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+          shadowSize: [41, 41]
+        });
+
+        clickMarker = L.marker([lat, lng], { icon: customIcon, draggable: true }).addTo(map);
+        
+        clickMarker.on('dragend', () => {
+          const pos = clickMarker.getLatLng();
+          setFormCoordinates(pos.lat, pos.lng);
+        });
+      }
+    }
+
+    // Set hidden form coordinates
+    function setFormCoordinates(lat, lng) {
+      document.getElementById('form-latitude').value = lat.toFixed(6);
+      document.getElementById('form-longitude').value = lng.toFixed(6);
+      document.getElementById('display-lat').textContent = lat.toFixed(6);
+      document.getElementById('display-lng').textContent = lng.toFixed(6);
+    }
+
+    // Fetch and plot reported issues
+    async function loadExistingIssues() {
+      try {
+        const res = await fetch('/api/issues');
+        const issues = await res.json();
+        
+        // Clear previous markers
+        existingMarkers.forEach(m => m.remove());
+        existingMarkers = [];
+
+        // Plot markers
+        issues.forEach(issue => {
+          const customIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-teal.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+          });
+
+          const marker = L.marker([issue.latitude, issue.longitude], { icon: customIcon }).addTo(map);
+          
+          const popupContent = `
+            <div class="p-1 space-y-1 text-xs">
+              <strong class="text-primary font-bold text-sm block">${issue.title}</strong>
+              <p class="text-gray-600 leading-relaxed">${issue.description}</p>
+              <span class="text-[9px] text-gray-400 block font-mono mt-1">Coords: ${issue.latitude.toFixed(4)}, ${issue.longitude.toFixed(4)}</span>
+            </div>
+          `;
+          
+          marker.bindPopup(popupContent);
+          existingMarkers.push(marker);
+        });
+      } catch (err) {
+        console.error('Failed to load existing issues:', err);
+        showToast('Error syncing issues map.', 'error');
+      }
+    }
+
+    // Submit Issue Form
+    document.getElementById('issue-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const title = document.getElementById('form-title').value;
+      const description = document.getElementById('form-description').value;
+      const latitude = parseFloat(document.getElementById('form-latitude').value);
+      const longitude = parseFloat(document.getElementById('form-longitude').value);
+
+      if (isNaN(latitude) || isNaN(longitude)) {
+        showToast('Please select a location on the map first.', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/issues', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ title, description, latitude, longitude })
+        });
+
+        if (response.ok) {
+          showToast('Issue reported successfully!');
+          // Reset form
+          document.getElementById('issue-form').reset();
+          document.getElementById('display-lat').textContent = 'Click on map';
+          document.getElementById('display-lng').textContent = 'Click on map';
+          
+          // Clear click marker
+          if (clickMarker) {
+            clickMarker.remove();
+            clickMarker = null;
+          }
+
+          // Reload existing issues
+          loadExistingIssues();
+        } else {
+          showToast('Failed to report issue.', 'error');
+        }
+      } catch (err) {
+        console.error('Error submitting issue:', err);
+        showToast('Error sending request.', 'error');
+      }
+    });
+
+    // Run on load
+    window.addEventListener('DOMContentLoaded', initMap);
+  </script>
+</body>
+</html>
