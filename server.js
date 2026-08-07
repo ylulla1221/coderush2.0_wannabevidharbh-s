@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
@@ -17,15 +18,12 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // MongoDB Connection Setup
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/civicpulse';
-mongoose.connect(MONGODB_URI)
+mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
-    console.log(`Connected to MongoDB database at: ${MONGODB_URI}`);
+    console.log('Successfully connected to MongoDB Atlas!');
     seedDatabase();
   })
-  .catch(err => {
-    console.error('MongoDB connection error:', err);
-  });
+  .catch(err => console.error('MongoDB connection error:', err));
 
 // Seed default accounts if database is fresh
 async function seedDatabase() {
