@@ -1,0 +1,12 @@
+{
+  "name": "civicflow-frontend",
+  "version": "1.0.0",
+  "description": "CivicFlow frontend — vanilla HTML/CSS/JS static files served by the Express backend",
+  "private": true,
+  "scripts": {
+    "start": "echo 'Frontend is served statically by the Express backend. Run npm start from the project root.'"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
