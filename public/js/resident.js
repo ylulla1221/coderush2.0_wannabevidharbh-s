@@ -316,6 +316,7 @@ const ResidentPortal = {
       contact: null,
       duration: 'Not specified'
     },
+    lastAskedField: null,
     started: false
   },
 
@@ -333,6 +334,7 @@ const ResidentPortal = {
         contact: null,
         duration: 'Not specified'
       },
+      lastAskedField: null,
       started: true
     };
     this.updateAIChatUI();
@@ -407,25 +409,39 @@ const ResidentPortal = {
   parseUserMessage(text) {
     const lower = text.toLowerCase();
 
+    const lastAsked = this.chatState.lastAskedField;
+
     // -- Extract Category --
+    let detectedCategory = null;
     if (lower.includes('water') || lower.includes('pipe') || lower.includes('leak') || lower.includes('sewage') || lower.includes('flood') || lower.includes('drain')) {
-      this.chatState.draft.category = 'Water Supply';
+      detectedCategory = 'Water Supply';
       this.chatState.draft.priority = 'Urgent';
     } else if (lower.includes('pothole') || lower.includes('road') || lower.includes('crack') || lower.includes('street repair') || lower.includes('asphalt')) {
-      this.chatState.draft.category = 'Road Repair / Pothole';
+      detectedCategory = 'Road Repair / Pothole';
       this.chatState.draft.priority = 'Moderate';
     } else if (lower.includes('streetlight') || lower.includes('lamp') || lower.includes('dark') || lower.includes('light bulb') || lower.includes('blackout')) {
-      this.chatState.draft.category = 'Streetlight Outage';
+      detectedCategory = 'Streetlight Outage';
       this.chatState.draft.priority = 'Low';
     } else if (lower.includes('garbage') || lower.includes('trash') || lower.includes('waste') || lower.includes('bin') || lower.includes('sanitation') || lower.includes('smell')) {
-      this.chatState.draft.category = 'Sanitation & Waste';
+      detectedCategory = 'Sanitation & Waste';
       this.chatState.draft.priority = 'Moderate';
     } else if (lower.includes('graffiti') || lower.includes('paint') || lower.includes('spray') || lower.includes('vandalism')) {
-      this.chatState.draft.category = 'Graffiti';
+      detectedCategory = 'Graffiti';
       this.chatState.draft.priority = 'Low';
     } else if (lower.includes('dumping') || lower.includes('debris') || lower.includes('illegal dump')) {
-      this.chatState.draft.category = 'Illegal Dumping';
+      detectedCategory = 'Illegal Dumping';
       this.chatState.draft.priority = 'Moderate';
+    }
+
+    if (detectedCategory) {
+      this.chatState.draft.category = detectedCategory;
+    } else if (lastAsked === 'category') {
+      if (lower.includes('water')) this.chatState.draft.category = 'Water Supply';
+      else if (lower.includes('pothole') || lower.includes('road') || lower.includes('repair')) this.chatState.draft.category = 'Road Repair / Pothole';
+      else if (lower.includes('light') || lower.includes('lamp')) this.chatState.draft.category = 'Streetlight Outage';
+      else if (lower.includes('waste') || lower.includes('garbage') || lower.includes('trash') || lower.includes('sanitation')) this.chatState.draft.category = 'Sanitation & Waste';
+      else if (lower.includes('graffiti')) this.chatState.draft.category = 'Graffiti';
+      else if (lower.includes('dumping') || lower.includes('dump')) this.chatState.draft.category = 'Illegal Dumping';
     }
 
     // -- Extract Location / Landmark --
@@ -440,23 +456,47 @@ const ResidentPortal = {
         locationMatch = match[0];
       }
     }
+
     if (locationMatch && locationMatch.length > 3) {
       this.chatState.draft.location = locationMatch;
+    } else if (lastAsked === 'location') {
+      const cleanText = text.replace(/[.,]/g, '').trim();
+      if (cleanText.length > 2 && !['yes', 'okay', 'sure', 'fine', 'no problem', 'ok'].includes(cleanText.toLowerCase())) {
+        this.chatState.draft.location = cleanText;
+      }
     }
 
     // -- Extract Name --
+    let nameMatch = null;
     const nameMatches = text.match(/(?:my name is|this is|i am|reporter is)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)/i);
     if (nameMatches && nameMatches[1]) {
-      this.chatState.draft.name = nameMatches[1].trim();
+      nameMatch = nameMatches[1].trim();
+    } else if (lastAsked === 'name') {
+      const cleanName = text.replace(/[.,]/g, '').trim();
+      if (cleanName.length > 2 && cleanName.split(' ').length <= 3 && !['yes', 'okay', 'sure', 'ok'].includes(cleanName.toLowerCase())) {
+        nameMatch = cleanName;
+      }
+    }
+    if (nameMatch) {
+      this.chatState.draft.name = nameMatch;
     }
 
     // -- Extract Contact --
+    let contactMatch = null;
     const emailMatch = text.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/);
     const phoneMatch = text.match(/\b(?:\+?\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}\b/);
     if (emailMatch) {
-      this.chatState.draft.contact = emailMatch[0];
+      contactMatch = emailMatch[0];
     } else if (phoneMatch) {
-      this.chatState.draft.contact = phoneMatch[0];
+      contactMatch = phoneMatch[0];
+    } else if (lastAsked === 'contact') {
+      const cleanContact = text.replace(/[.,]/g, '').trim();
+      if (cleanContact.length > 4 && !['yes', 'okay', 'ok'].includes(cleanContact.toLowerCase())) {
+        contactMatch = cleanContact;
+      }
+    }
+    if (contactMatch) {
+      this.chatState.draft.contact = contactMatch;
     }
 
     // -- Extract Duration --
@@ -479,21 +519,26 @@ const ResidentPortal = {
     const draft = this.chatState.draft;
 
     if (!draft.category) {
+      this.chatState.lastAskedField = 'category';
       return `I see. Could you clarify what category of issue this is? (e.g., Water Supply, Road Repair / Pothole, Streetlight Outage, Sanitation & Waste, Graffiti, or Illegal Dumping)`;
     }
 
     if (!draft.location) {
+      this.chatState.lastAskedField = 'location';
       return `Got it, I've noted the issue as ${draft.category}. Could you please specify where this issue is located? An address, cross street, or landmark would be helpful.`;
     }
 
     if (!draft.name) {
+      this.chatState.lastAskedField = 'name';
       return `Thanks. What is your name so I can link it as the reporter?`;
     }
 
     if (!draft.contact) {
+      this.chatState.lastAskedField = 'contact';
       return `Got it, ${draft.name}. What email address or phone number should we use to send you status updates?`;
     }
 
+    this.chatState.lastAskedField = null;
     const summary = `Perfect! I have collected all the necessary details. Here is a summary of what I've prepared:
 • **Category**: ${draft.category}
 • **Location**: ${draft.location}
