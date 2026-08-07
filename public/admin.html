@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CivicPulse — Administrator Panel</title>
+  <meta name="description" content="CivicPulse Administrator Panel — Manage officer and operator accounts for Nagpur Municipal Corporation."/>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1" rel="stylesheet"/>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:    #001334;
+      --teal:    #006a61;
+      --teal-lt: #e0f2f1;
+      --teal-dk: #004d45;
+      --bg:      #f4f6fb;
+      --surface: #ffffff;
+      --border:  #e2e5ee;
+      --text:    #1a1d27;
+      --muted:   #6b7280;
+      --danger:  #dc2626;
+      --warn:    #d97706;
+      --success: #16a34a;
+      --info:    #2563eb;
+      --radius:  14px;
+      --shadow:  0 4px 24px rgba(0,19,52,.07);
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--navy);
+      color: #fff;
+      padding: 0 28px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 12px rgba(0,0,0,.18);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-brand { display: flex; align-items: center; gap: 10px; }
+    .header-brand .logo-icon { color: var(--teal); font-size: 28px; }
+    .header-brand h1 { font-size: 17px; font-weight: 800; letter-spacing: -.4px; }
+    .header-brand span.sub { font-size: 10px; color: #94a3b8; font-weight: 500; display: block; }
+    .header-actions { display: flex; align-items: center; gap: 12px; }
+    .header-badge {
+      background: rgba(0,106,97,.25);
+      color: #4dd4c8;
+      border: 1px solid rgba(0,106,97,.4);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .5px;
+    }
+    .btn-back {
+      display: flex; align-items: center; gap: 5px;
+      color: #94a3b8; font-size: 11px; font-weight: 600;
+      text-decoration: none; transition: color .2s;
+    }
+    .btn-back:hover { color: #fff; }
+    .btn-back .material-symbols-outlined { font-size: 16px; }
+
+    /* ── Layout ── */
+    main { flex: 1; padding: 28px; max-width: 1300px; margin: 0 auto; width: 100%; }
+
+    /* ── Stats Row ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: transform .2s, box-shadow .2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .stat-card.navy::before  { background: var(--navy); }
+    .stat-card.teal::before  { background: var(--teal); }
+    .stat-card.warn::before  { background: var(--warn); }
+    .stat-card.success::before { background: var(--success); }
+    .stat-card.danger::before { background: var(--danger); }
+    .stat-card.info::before  { background: var(--info); }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,19,52,.1); }
+    .stat-icon { font-size: 22px; opacity: .7; }
+    .stat-card.navy .stat-icon  { color: var(--navy); }
+    .stat-card.teal .stat-icon  { color: var(--teal); }
+    .stat-card.warn .stat-icon  { color: var(--warn); }
+    .stat-card.success .stat-icon { color: var(--success); }
+    .stat-card.danger .stat-icon { color: var(--danger); }
+    .stat-card.info .stat-icon  { color: var(--info); }
+    .stat-value { font-size: 28px; font-weight: 800; color: var(--text); }
+    .stat-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+
+    /* ── Content Grid ── */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 900px) { .content-grid { grid-template-columns: 1fr; } }
+
+    /* ── Panel ── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(135deg, #f8faff 0%, #fff 100%);
+    }
+    .panel-title {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 14px; font-weight: 700; color: var(--navy);
+    }
+    .panel-title .material-symbols-outlined { font-size: 18px; color: var(--teal); }
+
+    /* ── Search ── */
+    .search-bar {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+    .search-bar input {
+      border: none; background: transparent; outline: none;
+      font-size: 12px; font-family: 'Inter', sans-serif; width: 160px; color: var(--text);
+    }
+    .search-bar .material-symbols-outlined { font-size: 16px; color: var(--muted); }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead { background: #f8faff; }
+    th {
+      padding: 11px 16px;
+      text-align: left;
+      font-weight: 700;
+      color: var(--navy);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #f1f3f8;
+      vertical-align: middle;
+      color: var(--text);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f8faff; }
+
+    /* ── Avatar ── */
+    .avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 800;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .avatar.teal   { background: linear-gradient(135deg, var(--teal), var(--teal-dk)); }
+    .avatar.navy   { background: linear-gradient(135deg, #001334, #003366); }
+    .avatar.purple { background: linear-gradient(135deg, #7c3aed, #a855f7); }
+    .avatar.orange { background: linear-gradient(135deg, #ea580c, #f97316); }
+
+    .user-info { display: flex; align-items: center; gap: 10px; }
+    .user-name  { font-weight: 600; font-size: 13px; }
+    .user-email { font-size: 11px; color: var(--muted); }
+
+    /* ── Role Badge ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 10px; font-weight: 700; letter-spacing: .3px;
+      white-space: nowrap;
+    }
+    .badge.officer  { background: #e0f2f1; color: #005048; border: 1px solid #b2dfdb; }
+    .badge.operator { background: #e8eaf6; color: #1a237e; border: 1px solid #c5cae9; }
+    .badge.resident { background: #fff8e1; color: #795548; border: 1px solid #ffecb3; }
+    .badge .material-symbols-outlined { font-size: 12px; }
+
+    /* ── Action Buttons ── */
+    .btn-icon {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fff;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all .18s;
+      color: var(--muted);
+    }
+    .btn-icon .material-symbols-outlined { font-size: 14px; }
+    .btn-icon:hover { background: var(--bg); color: var(--navy); border-color: var(--navy); }
+    .btn-icon.danger:hover { background: #fef2f2; color: var(--danger); border-color: var(--danger); }
+    .btn-icon.edit:hover  { background: #eff6ff; color: var(--info); border-color: var(--info); }
+
+    /* ── Create User Form Panel ── */
+    .form-panel { padding: 0; }
+    .form-body { padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; }
+
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group label {
+      font-size: 11px; font-weight: 700; color: var(--navy);
+      text-transform: uppercase; letter-spacing: .4px;
+    }
+    .form-group input, .form-group select {
+      padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 12px;
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      background: #fff;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .form-group input:focus, .form-group select:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(0,106,97,.1);
+    }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      background: linear-gradient(135deg, var(--teal), var(--teal-dk));
+      color: #fff;
+      border: none;
+      border-radius: 9px;
+      padding: 10px 18px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: all .2s;
+      width: 100%;
+      box-shadow: 0 3px 10px rgba(0,106,97,.25);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,106,97,.3); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary .material-symbols-outlined { font-size: 16px; }
+
+    .btn-secondary {
+      background: #fff;
+      color: var(--navy);
+      border: 1.5px solid var(--border);
+      border-radius: 9px;
+      padding: 10px 18px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: all .2s;
+      width: 100%;
+    }
+    .btn-secondary:hover { background: var(--bg); border-color: var(--navy); }
+
+    /* ── Password Hint ── */
+    .password-hint {
+      font-size: 10px; color: var(--muted);
+      display: flex; align-items: center; gap: 4px;
+      padding: 7px 10px;
+      background: #f8faff;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+    }
+    .password-hint .material-symbols-outlined { font-size: 12px; color: var(--info); }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--navy); color: #fff;
+      padding: 12px 18px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.18);
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; font-weight: 600;
+      z-index: 9999;
+      transition: all .3s;
+      opacity: 0; transform: translateY(10px);
+      pointer-events: none;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+    #toast .material-symbols-outlined { font-size: 16px; }
+    #toast.success .t-icon { color: #4ade80; }
+    #toast.error   .t-icon { color: #f87171; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,19,52,.45);
+      backdrop-filter: blur(4px);
+      z-index: 500;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 16px;
+      width: 420px; max-width: 95vw;
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
+      overflow: hidden;
+      animation: slideUp .25s ease;
+    }
+    @keyframes slideUp { from { opacity:0; transform:translateY(20px) } to { opacity:1; transform:translateY(0) } }
+    .modal-head {
+      padding: 18px 22px;
+      background: var(--navy);
+      color: #fff;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .modal-head h3 { font-size: 14px; font-weight: 700; }
+    .modal-head .material-symbols-outlined { font-size: 18px; color: var(--teal); }
+    .modal-body { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+    .modal-footer { padding: 16px 22px; border-top: 1px solid var(--border); display: flex; gap: 10px; }
+    .modal-footer .btn-danger {
+      background: var(--danger); color: #fff; border: none;
+      border-radius: 9px; padding: 10px 18px;
+      font-size: 12px; font-weight: 700; font-family: 'Inter', sans-serif;
+      cursor: pointer; flex: 1; transition: all .2s;
+    }
+    .modal-footer .btn-danger:hover { background: #b91c1c; }
+    .modal-footer .btn-cancel {
+      background: #fff; color: var(--muted); border: 1.5px solid var(--border);
+      border-radius: 9px; padding: 10px 18px;
+      font-size: 12px; font-weight: 600; font-family: 'Inter', sans-serif;
+      cursor: pointer; flex: 1; transition: all .2s;
+    }
+    .modal-footer .btn-cancel:hover { background: var(--bg); }
+
+    /* ── Empty State ── */
+    .empty-state {
+      padding: 48px; text-align: center; color: var(--muted);
+    }
+    .empty-state .material-symbols-outlined { font-size: 48px; opacity: .3; display: block; margin-bottom: 10px; }
+    .empty-state p { font-size: 13px; }
+
+    /* ── Loading Skeleton ── */
+    .skeleton {
+      background: linear-gradient(90deg, #f1f3f8 25%, #e8ecf4 50%, #f1f3f8 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 6px;
+      height: 14px;
+    }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    /* ── Divider ── */
+    .divider {
+      border: none; border-top: 1px solid var(--border); margin: 4px 0;
+    }
+
+    /* ── Credential Box ── */
+    .cred-box {
+      background: #0f172a;
+      color: #e2e8f0;
+      font-family: monospace;
+      font-size: 11px;
+      border-radius: 8px;
+      padding: 12px 14px;
+      line-height: 1.8;
+      position: relative;
+    }
+    .cred-box .cred-key { color: #94a3b8; }
+    .cred-box .cred-val { color: #4ade80; }
+  </style>
+</head>
+
+<body>
+
+  <!-- ── Header ───────────────────────────────────────────────────────────── -->
+  <header>
+    <div class="header-brand">
+      <span class="material-symbols-outlined logo-icon">admin_panel_settings</span>
+      <div>
+        <h1>CivicPulse Admin</h1>
+        <span class="sub">User & Account Management</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="header-badge">ADMINISTRATOR</div>
+      <a href="/index.html" class="btn-back">
+        <span class="material-symbols-outlined">arrow_back</span>
+        Dashboard
+      </a>
+    </div>
+  </header>
+
+  <!-- ── Main ─────────────────────────────────────────────────────────────── -->
+  <main>
+
+    <!-- Stats Row -->
+    <div class="stats-grid">
+      <div class="stat-card navy">
+        <span class="material-symbols-outlined stat-icon">group</span>
+        <div class="stat-value" id="stat-total">—</div>
+        <div class="stat-label">Total Users</div>
+      </div>
+      <div class="stat-card teal">
+        <span class="material-symbols-outlined stat-icon">engineering</span>
+        <div class="stat-value" id="stat-officers">—</div>
+        <div class="stat-label">Officers</div>
+      </div>
+      <div class="stat-card info">
+        <span class="material-symbols-outlined stat-icon">manage_accounts</span>
+        <div class="stat-value" id="stat-operators">—</div>
+        <div class="stat-label">Operators</div>
+      </div>
+      <div class="stat-card warn">
+        <span class="material-symbols-outlined stat-icon">person</span>
+        <div class="stat-value" id="stat-residents">—</div>
+        <div class="stat-label">Residents</div>
+      </div>
+      <div class="stat-card success">
+        <span class="material-symbols-outlined stat-icon">task_alt</span>
+        <div class="stat-value" id="stat-resolved">—</div>
+        <div class="stat-label">Resolved Cases</div>
+      </div>
+      <div class="stat-card danger">
+        <span class="material-symbols-outlined stat-icon">pending_actions</span>
+        <div class="stat-value" id="stat-pending">—</div>
+        <div class="stat-label">Pending Cases</div>
+      </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="content-grid">
+
+      <!-- Left: User Table -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="material-symbols-outlined">badge</span>
+            Registered Users
+          </div>
+          <div class="search-bar">
+            <span class="material-symbols-outlined">search</span>
+            <input type="text" id="search-input" placeholder="Search name, email, role…" oninput="filterTable()"/>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="user-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Role</th>
+                <th>Department</th>
+                <th>Ward / Zone</th>
+                <th>Joined</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="user-tbody">
+              <tr>
+                <td colspan="6">
+                  <div class="empty-state">
+                    <span class="material-symbols-outlined">hourglass_empty</span>
+                    <p>Loading users…</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Right: Create User Form -->
+      <div class="panel form-panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span class="material-symbols-outlined">person_add</span>
+            Create New Officer Account
+          </div>
+        </div>
+
+        <div class="form-body">
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" id="f-name" placeholder="Er. Rajesh Patil" required/>
+          </div>
+
+          <div class="form-group">
+            <label>Official Email</label>
+            <input type="email" id="f-email" placeholder="officer@civicpulse.gov" required/>
+          </div>
+
+          <div class="form-group">
+            <label>Temporary Password</label>
+            <input type="text" id="f-pass" placeholder="Min 8 characters" required/>
+          </div>
+
+          <div class="password-hint">
+            <span class="material-symbols-outlined">info</span>
+            Officer will be asked to change this on first login.
+          </div>
+
+          <div class="form-group">
+            <label>Role</label>
+            <select id="f-role" onchange="updateRoleHint()">
+              <option value="MUNICIPAL_OFFICER">Municipal Officer</option>
+              <option value="OPERATOR">Operator / Admin</option>
+              <option value="RESIDENT">Resident (Citizen)</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Department</label>
+              <select id="f-dept">
+                <option>Road Repair / Pothole</option>
+                <option>Water Supply & Engineering</option>
+                <option>Streetlight Outage</option>
+                <option>Sanitation & Waste</option>
+                <option>Graffiti & Vandalism</option>
+                <option>Executive Administration</option>
+                <option>General Public</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Ward / Zone</label>
+              <input type="text" id="f-ward" placeholder="Ward 12 / All Wards"/>
+            </div>
+          </div>
+
+          <hr class="divider"/>
+
+          <button class="btn-primary" id="create-btn" onclick="createUser()">
+            <span class="material-symbols-outlined">add_circle</span>
+            Create Account
+          </button>
+
+          <button class="btn-secondary" onclick="resetForm()">
+            <span class="material-symbols-outlined">restart_alt</span>
+            Reset Form
+          </button>
+
+          <!-- Credential Display (shown after create) -->
+          <div id="cred-display" style="display:none;">
+            <div style="font-size:11px; font-weight:700; color:var(--success); margin-bottom:6px; display:flex; align-items:center; gap:4px;">
+              <span class="material-symbols-outlined" style="font-size:14px;">check_circle</span>
+              Account Created — Share credentials:
+            </div>
+            <div class="cred-box" id="cred-box"></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content-grid -->
+  </main>
+
+  <!-- ── Delete Confirmation Modal ─────────────────────────────────────────── -->
+  <div class="modal-overlay" id="delete-modal">
+    <div class="modal">
+      <div class="modal-head">
+        <span class="material-symbols-outlined">warning</span>
+        <h3>Confirm Account Deletion</h3>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13px; color:var(--text);">
+          You are about to permanently delete the account for:
+        </p>
+        <div style="background:#fff5f5; border:1px solid #fecaca; border-radius:8px; padding:12px 14px;">
+          <div style="font-weight:700; font-size:13px; color:var(--danger);" id="modal-user-name">—</div>
+          <div style="font-size:11px; color:var(--muted);" id="modal-user-email">—</div>
+        </div>
+        <p style="font-size:11px; color:var(--danger);">
+          ⚠️ This action cannot be undone. All associated data will be lost.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+        <button class="btn-danger" id="confirm-delete-btn" onclick="confirmDelete()">
+          Delete Account
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Toast ─────────────────────────────────────────────────────────────── -->
+  <div id="toast">
+    <span class="material-symbols-outlined t-icon" id="toast-icon">check_circle</span>
+    <span id="toast-text">Done!</span>
+  </div>
+
+  <!-- ── Scripts ───────────────────────────────────────────────────────────── -->
+  <script>
+    let allUsers = [];
+    let pendingDeleteId = null;
+
+    // ── Utilities ────────────────────────────────────────────────────────────
+    function showToast(msg, type = 'success') {
+      const t = document.getElementById('toast');
+      const icon = document.getElementById('toast-icon');
+      document.getElementById('toast-text').textContent = msg;
+      t.className = `show ${type}`;
+      icon.textContent = type === 'success' ? 'check_circle' : 'error';
+      setTimeout(() => { t.className = ''; }, 3200);
+    }
+
+    function avatarColor(role) {
+      if (role === 'MUNICIPAL_OFFICER') return 'teal';
+      if (role === 'OPERATOR') return 'navy';
+      if (role === 'RESIDENT') return 'orange';
+      return 'purple';
+    }
+
+    function initials(name) {
+      return name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    }
+
+    function roleBadge(role) {
+      if (role === 'MUNICIPAL_OFFICER') return `<span class="badge officer"><span class="material-symbols-outlined">engineering</span>Officer</span>`;
+      if (role === 'OPERATOR')          return `<span class="badge operator"><span class="material-symbols-outlined">manage_accounts</span>Operator</span>`;
+      return                                   `<span class="badge resident"><span class="material-symbols-outlined">person</span>Resident</span>`;
+    }
+
+    function formatDate(iso) {
+      if (!iso) return '—';
+      return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    // ── Load Stats ────────────────────────────────────────────────────────────
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/admin/stats');
+        const s = await res.json();
+        document.getElementById('stat-total').textContent    = s.totalUsers;
+        document.getElementById('stat-officers').textContent = s.officers;
+        document.getElementById('stat-operators').textContent= s.operators;
+        document.getElementById('stat-residents').textContent= s.residents;
+        document.getElementById('stat-resolved').textContent = s.resolved;
+        document.getElementById('stat-pending').textContent  = s.pending;
+      } catch (e) { console.error('Stats load failed:', e); }
+    }
+
+    // ── Load Users ────────────────────────────────────────────────────────────
+    async function loadUsers() {
+      try {
+        const res = await fetch('/api/admin/users');
+        allUsers = await res.json();
+        renderTable(allUsers);
+      } catch (e) {
+        showToast('Failed to load users.', 'error');
+      }
+    }
+
+    function renderTable(users) {
+      const tbody = document.getElementById('user-tbody');
+      if (!users.length) {
+        tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">
+          <span class="material-symbols-outlined">group_off</span>
+          <p>No users found.</p></div></td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = users.map(u => `
+        <tr id="row-${u.id}">
+          <td>
+            <div class="user-info">
+              <div class="avatar ${avatarColor(u.role)}">${initials(u.name)}</div>
+              <div>
+                <div class="user-name">${u.name}</div>
+                <div class="user-email">${u.email}</div>
+              </div>
+            </div>
+          </td>
+          <td>${roleBadge(u.role)}</td>
+          <td style="font-size:12px; color:var(--muted);">${u.department || '—'}</td>
+          <td style="font-size:12px;">${u.ward || '—'}</td>
+          <td style="font-size:11px; color:var(--muted); white-space:nowrap;">${formatDate(u.createdAt)}</td>
+          <td>
+            <div style="display:flex; gap:6px;">
+              <button class="btn-icon edit" title="Edit user" onclick="editUser('${u.id}')">
+                <span class="material-symbols-outlined">edit</span>
+              </button>
+              <button class="btn-icon danger" title="Delete user" onclick="openDeleteModal('${u.id}', '${u.name.replace(/'/g,"\\'")}', '${u.email}')">
+                <span class="material-symbols-outlined">delete</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // ── Search / Filter ───────────────────────────────────────────────────────
+    function filterTable() {
+      const q = document.getElementById('search-input').value.toLowerCase();
+      const filtered = allUsers.filter(u =>
+        u.name.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        u.role.toLowerCase().includes(q) ||
+        (u.department || '').toLowerCase().includes(q)
+      );
+      renderTable(filtered);
+    }
+
+    // ── Create User ───────────────────────────────────────────────────────────
+    async function createUser() {
+      const name  = document.getElementById('f-name').value.trim();
+      const email = document.getElementById('f-email').value.trim();
+      const pass  = document.getElementById('f-pass').value.trim();
+      const role  = document.getElementById('f-role').value;
+      const dept  = document.getElementById('f-dept').value;
+      const ward  = document.getElementById('f-ward').value.trim();
+
+      if (!name || !email || !pass) {
+        showToast('Please fill in all required fields.', 'error');
+        return;
+      }
+      if (pass.length < 6) {
+        showToast('Password must be at least 6 characters.', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('create-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> Creating…';
+
+      try {
+        const res = await fetch('/api/admin/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password: pass, role, department: dept, ward: ward || 'All Wards' })
+        });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Creation failed.');
+
+        showToast(`Account created for ${data.name}!`, 'success');
+
+        // Show credentials box
+        document.getElementById('cred-display').style.display = 'block';
+        document.getElementById('cred-box').innerHTML = `
+          <div><span class="cred-key">Name:  </span><span class="cred-val">${data.name}</span></div>
+          <div><span class="cred-key">Email: </span><span class="cred-val">${data.email}</span></div>
+          <div><span class="cred-key">Pass:  </span><span class="cred-val">${pass}</span></div>
+          <div><span class="cred-key">Role:  </span><span class="cred-val">${data.role}</span></div>
+          <div><span class="cred-key">Dept:  </span><span class="cred-val">${data.department}</span></div>
+        `;
+
+        allUsers.unshift(data);
+        renderTable(allUsers);
+        loadStats();
+      } catch (e) {
+        showToast(e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span class="material-symbols-outlined">add_circle</span> Create Account';
+      }
+    }
+
+    // ── Reset Form ────────────────────────────────────────────────────────────
+    function resetForm() {
+      ['f-name','f-email','f-pass','f-ward'].forEach(id => { document.getElementById(id).value = ''; });
+      document.getElementById('f-role').value = 'MUNICIPAL_OFFICER';
+      document.getElementById('f-dept').selectedIndex = 0;
+      document.getElementById('cred-display').style.display = 'none';
+    }
+
+    // ── Edit User (prefill form) ──────────────────────────────────────────────
+    function editUser(id) {
+      const u = allUsers.find(x => x.id === id);
+      if (!u) return;
+      document.getElementById('f-name').value  = u.name;
+      document.getElementById('f-email').value = u.email;
+      document.getElementById('f-role').value  = u.role;
+      document.getElementById('f-ward').value  = u.ward || '';
+      document.getElementById('cred-display').style.display = 'none';
+      document.getElementById('f-pass').value = '';
+
+      const btn = document.getElementById('create-btn');
+      btn.innerHTML = '<span class="material-symbols-outlined">save</span> Update Account';
+      btn.onclick = () => updateUser(id);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      showToast(`Editing: ${u.name}`, 'success');
+    }
+
+    async function updateUser(id) {
+      const name  = document.getElementById('f-name').value.trim();
+      const email = document.getElementById('f-email').value.trim();
+      const role  = document.getElementById('f-role').value;
+      const dept  = document.getElementById('f-dept').value;
+      const ward  = document.getElementById('f-ward').value.trim();
+
+      try {
+        const res = await fetch(`/api/admin/users/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, role, department: dept, ward })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Update failed.');
+
+        const idx = allUsers.findIndex(u => u.id === id);
+        if (idx !== -1) allUsers[idx] = { ...allUsers[idx], ...data };
+        renderTable(allUsers);
+        showToast(`${data.name} updated successfully.`, 'success');
+
+        // Reset to create mode
+        resetForm();
+        const btn = document.getElementById('create-btn');
+        btn.innerHTML = '<span class="material-symbols-outlined">add_circle</span> Create Account';
+        btn.onclick = createUser;
+      } catch (e) {
+        showToast(e.message, 'error');
+      }
+    }
+
+    // ── Delete Modal ──────────────────────────────────────────────────────────
+    function openDeleteModal(id, name, email) {
+      pendingDeleteId = id;
+      document.getElementById('modal-user-name').textContent  = name;
+      document.getElementById('modal-user-email').textContent = email;
+      document.getElementById('delete-modal').classList.add('open');
+    }
+
+    function closeDeleteModal() {
+      pendingDeleteId = null;
+      document.getElementById('delete-modal').classList.remove('open');
+    }
+
+    async function confirmDelete() {
+      if (!pendingDeleteId) return;
+      const btn = document.getElementById('confirm-delete-btn');
+      btn.textContent = 'Deleting…'; btn.disabled = true;
+
+      try {
+        const res = await fetch(`/api/admin/users/${pendingDeleteId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Delete failed.');
+
+        allUsers = allUsers.filter(u => u.id !== pendingDeleteId);
+        renderTable(allUsers);
+        loadStats();
+        showToast(data.message, 'success');
+        closeDeleteModal();
+      } catch (e) {
+        showToast(e.message, 'error');
+      } finally {
+        btn.textContent = 'Delete Account'; btn.disabled = false;
+      }
+    }
+
+    // Close modal on overlay click
+    document.getElementById('delete-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeDeleteModal();
+    });
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+      loadStats();
+      loadUsers();
+    });
+  </script>
+
+</body>
+</html>
