@@ -106,7 +106,7 @@ app.get('/api/complaints', async (req, res) => {
 
 // 2. POST /api/complaints
 app.post('/api/complaints', async (req, res) => {
-  const {
+  let {
     id, category, description, lat, lng, address,
     reporterName, reporterContact, priority, status, date,
     locationConfidence
@@ -114,6 +114,20 @@ app.post('/api/complaints', async (req, res) => {
 
   if (!id || !category || !description || !address) {
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  const isSeattle = lat === 47.6062 && lng === -122.3321;
+  const isMissing = !lat || !lng || isNaN(parseFloat(lat)) || isNaN(parseFloat(lng));
+  if (isMissing || isSeattle) {
+    try {
+      const coords = await getCoordsFromAddress(address);
+      lat = coords.lat;
+      lng = coords.lon;
+    } catch (err) {
+      console.error('Auto geocoding failed for complaint:', err.message);
+      lat = 18.5204;
+      lng = 73.8567;
+    }
   }
 
   try {
@@ -124,7 +138,7 @@ app.post('/api/complaints', async (req, res) => {
         location_confidence, sla_breached
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
     `, [
-      id, category, description, lat || null, lng || null, address,
+      id, category, description, lat, lng, address,
       reporterName || null, reporterContact || null, priority || 'Moderate',
       status || 'Submitted', date || new Date().toISOString().split('T')[0],
       locationConfidence || 0.85
@@ -134,9 +148,9 @@ app.post('/api/complaints', async (req, res) => {
     await runAsync(`
       INSERT INTO audit_logs (ticket_id, action, performed_by, details)
       VALUES (?, 'COMPLAINT_CREATED', 'CITIZEN_PORTAL', ?)
-    `, [id, `Complaint intake via standard/AI form. Location Confidence: ${locationConfidence || 0.85}`]);
+    `, [id, `Complaint intake via standard/AI form. Auto-geocoded Coordinates: ${lat}, ${lng}`]);
 
-    res.status(201).json({ success: true, id });
+    res.status(201).json({ success: true, id, lat, lng });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -441,9 +455,22 @@ app.get('/api/issues', async (req, res) => {
 
 // 14. POST /api/issues (Create a new issue)
 app.post('/api/issues', async (req, res) => {
-  const { title, description, latitude, longitude } = req.body;
-  if (!title || !description || latitude === undefined || longitude === undefined) {
-    return res.status(400).json({ error: 'Missing title, description, latitude, or longitude' });
+  let { title, description, latitude, longitude, extracted_location } = req.body;
+  if (!title || !description) {
+    return res.status(400).json({ error: 'Missing title or description' });
+  }
+
+  if (latitude === undefined || longitude === undefined || latitude === null || longitude === null || isNaN(parseFloat(latitude)) || isNaN(parseFloat(longitude))) {
+    const searchLoc = extracted_location || title;
+    try {
+      const coords = await getCoordsFromAddress(searchLoc);
+      latitude = coords.lat;
+      longitude = coords.lon;
+    } catch (err) {
+      console.error('Auto geocoding failed for issue:', err.message);
+      latitude = 18.5204;
+      longitude = 73.8567;
+    }
   }
 
   try {
@@ -621,6 +648,8 @@ app.post('/api/chat', (req, res) => {
     reply = `Perfect! I have collected all the details. Please click 'Submit Report' to log the complaint.`;
   }
 
+  const extracted_location = [currentDraft.landmark, currentDraft.city, "Maharashtra"].filter(Boolean).join(', ');
+
   res.json({
     category: currentDraft.category,
     priority: currentDraft.priority?.toUpperCase(),
@@ -629,6 +658,7 @@ app.post('/api/chat', (req, res) => {
     formal_description: currentDraft.formal_description,
     reporter_name: currentDraft.reporter_name,
     contact: currentDraft.contact,
+    extracted_location,
     missing_fields,
     reply,
     lastAskedField: currentDraft.lastAskedField

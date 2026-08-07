@@ -396,6 +396,9 @@
         });
 
         if (response.ok) {
+          const json = await response.json();
+          const issue = json.issue;
+
           showToast('Issue reported successfully!');
           // Reset form
           document.getElementById('issue-form').reset();
@@ -408,8 +411,27 @@
             clickMarker = null;
           }
 
-          // Reload existing issues
-          loadExistingIssues();
+          // Immediately plot on map without page reload
+          if (issue && issue.latitude && issue.longitude) {
+            const customIcon = L.icon({
+              iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-teal.png',
+              shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+              iconSize: [25, 41],
+              iconAnchor: [12, 41],
+              popupAnchor: [1, -34],
+              shadowSize: [41, 41]
+            });
+            const marker = L.marker([issue.latitude, issue.longitude], { icon: customIcon }).addTo(map);
+            const popupContent = `
+              <div class="p-1 space-y-1 text-xs">
+                <strong class="text-primary font-bold text-sm block">${issue.title}</strong>
+                <p class="text-gray-600 leading-relaxed">${issue.description}</p>
+                <span class="text-[9px] text-gray-400 block font-mono mt-1">Coords: ${issue.latitude.toFixed(4)}, ${issue.longitude.toFixed(4)}</span>
+              </div>
+            `;
+            marker.bindPopup(popupContent);
+            existingMarkers.push(marker);
+          }
         } else {
           showToast('Failed to report issue.', 'error');
         }
