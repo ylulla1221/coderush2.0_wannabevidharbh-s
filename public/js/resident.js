@@ -327,12 +327,14 @@ const ResidentPortal = {
       ],
       draft: {
         category: null,
-        priority: 'Moderate',
-        description: null,
-        location: null,
-        name: null,
+        priority: 'MODERATE',
+        landmark: null,
+        city: null,
+        formal_description: null,
+        reporter_name: null,
         contact: null,
-        duration: 'Not specified'
+        location: null,
+        name: null
       },
       lastAskedField: null,
       started: true
@@ -383,194 +385,121 @@ const ResidentPortal = {
       content.classList.remove('hidden');
     }
 
-    const catEl = document.getElementById('res-ai-suggested-cat');
-    const priEl = document.getElementById('res-ai-suggested-pri');
-    const landmarkEl = document.getElementById('res-ai-landmark');
-    const durationEl = document.getElementById('res-ai-duration');
-    const descEl = document.getElementById('res-ai-formal-desc');
-    const nameEl = document.getElementById('res-ai-reporter-name');
-    const contactEl = document.getElementById('res-ai-reporter-contact');
+    // Direct JSON Draft Auto-Fill mapping to DOM IDs
+    const categoryEl = document.getElementById('suggested-category');
+    const priorityEl = document.getElementById('suggested-priority');
+    const landmarkEl = document.getElementById('landmark');
+    const descEl = document.getElementById('formal-description');
+    const nameEl = document.getElementById('reporter-name');
+    const contactEl = document.getElementById('reporter-contact');
 
-    if (catEl) catEl.textContent = this.chatState.draft.category || 'Not identified yet';
-    if (priEl) {
-      const priority = this.chatState.draft.priority || 'Moderate';
-      priEl.textContent = priority;
-      priEl.className = priority === 'Urgent'
-        ? 'inline-block px-2.5 py-0.5 bg-red-100 text-red-800 border border-red-200 rounded-full font-bold uppercase text-[9px]'
-        : 'inline-block px-2.5 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 rounded-full font-bold uppercase text-[9px]';
+    // Update elements
+    if (categoryEl) categoryEl.textContent = this.chatState.draft.category || 'Not identified yet';
+    if (priorityEl) {
+      const priority = this.chatState.draft.priority || 'MODERATE';
+      priorityEl.textContent = priority.toUpperCase();
+      
+      // Also style parent container
+      const priContainer = document.getElementById('res-ai-suggested-pri');
+      if (priContainer) {
+        priContainer.className = priority.toUpperCase() === 'URGENT'
+          ? 'inline-block px-2.5 py-0.5 bg-red-100 text-red-800 border border-red-200 rounded-full font-bold uppercase text-[9px]'
+          : 'inline-block px-2.5 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 rounded-full font-bold uppercase text-[9px]';
+      }
     }
-    if (landmarkEl) landmarkEl.textContent = this.chatState.draft.location || 'Not identified yet';
-    if (durationEl) durationEl.textContent = this.chatState.draft.duration || 'Not specified';
-    if (descEl) descEl.textContent = this.chatState.draft.description || 'Provide details on the left...';
-    if (nameEl) nameEl.textContent = this.chatState.draft.name || 'Not identified yet';
-    if (contactEl) contactEl.textContent = this.chatState.draft.contact || 'Not identified yet';
+    
+    // Parse combined location string
+    const locStr = [this.chatState.draft.landmark, this.chatState.draft.city].filter(Boolean).join(', ');
+    if (landmarkEl) landmarkEl.textContent = locStr || 'Not identified yet';
+    if (descEl) descEl.textContent = this.chatState.draft.formal_description || 'Provide details on the left...';
+    if (nameEl) nameEl.textContent = this.chatState.draft.reporter_name || '-';
+    if (contactEl) contactEl.textContent = this.chatState.draft.contact || '-';
+
+    // Legacy backup elements
+    const legacyCat = document.getElementById('res-ai-suggested-cat');
+    const legacyLandmark = document.getElementById('res-ai-landmark');
+    const legacyDesc = document.getElementById('res-ai-formal-desc');
+    const legacyName = document.getElementById('res-ai-reporter-name');
+    const legacyContact = document.getElementById('res-ai-reporter-contact');
+
+    if (legacyCat && !categoryEl) legacyCat.textContent = this.chatState.draft.category || 'Not identified yet';
+    if (legacyLandmark && !landmarkEl) legacyLandmark.textContent = locStr || 'Not identified yet';
+    if (legacyDesc && !descEl) legacyDesc.textContent = this.chatState.draft.formal_description || 'Provide details on the left...';
+    if (legacyName && !nameEl) legacyName.textContent = this.chatState.draft.reporter_name || '-';
+    if (legacyContact && !contactEl) legacyContact.textContent = this.chatState.draft.contact || '-';
   },
 
-  parseUserMessage(text) {
-    const lower = text.toLowerCase();
-
-    const lastAsked = this.chatState.lastAskedField;
-
-    // -- Extract Category --
-    let detectedCategory = null;
-    if (lower.includes('water') || lower.includes('pipe') || lower.includes('leak') || lower.includes('sewage') || lower.includes('flood') || lower.includes('drain')) {
-      detectedCategory = 'Water Supply';
-      this.chatState.draft.priority = 'Urgent';
-    } else if (lower.includes('pothole') || lower.includes('road') || lower.includes('crack') || lower.includes('street repair') || lower.includes('asphalt')) {
-      detectedCategory = 'Road Repair / Pothole';
-      this.chatState.draft.priority = 'Moderate';
-    } else if (lower.includes('streetlight') || lower.includes('lamp') || lower.includes('dark') || lower.includes('light bulb') || lower.includes('blackout')) {
-      detectedCategory = 'Streetlight Outage';
-      this.chatState.draft.priority = 'Low';
-    } else if (lower.includes('garbage') || lower.includes('trash') || lower.includes('waste') || lower.includes('bin') || lower.includes('sanitation') || lower.includes('smell')) {
-      detectedCategory = 'Sanitation & Waste';
-      this.chatState.draft.priority = 'Moderate';
-    } else if (lower.includes('graffiti') || lower.includes('paint') || lower.includes('spray') || lower.includes('vandalism')) {
-      detectedCategory = 'Graffiti';
-      this.chatState.draft.priority = 'Low';
-    } else if (lower.includes('dumping') || lower.includes('debris') || lower.includes('illegal dump')) {
-      detectedCategory = 'Illegal Dumping';
-      this.chatState.draft.priority = 'Moderate';
-    }
-
-    if (detectedCategory) {
-      this.chatState.draft.category = detectedCategory;
-    } else if (lastAsked === 'category') {
-      if (lower.includes('water')) this.chatState.draft.category = 'Water Supply';
-      else if (lower.includes('pothole') || lower.includes('road') || lower.includes('repair')) this.chatState.draft.category = 'Road Repair / Pothole';
-      else if (lower.includes('light') || lower.includes('lamp')) this.chatState.draft.category = 'Streetlight Outage';
-      else if (lower.includes('waste') || lower.includes('garbage') || lower.includes('trash') || lower.includes('sanitation')) this.chatState.draft.category = 'Sanitation & Waste';
-      else if (lower.includes('graffiti')) this.chatState.draft.category = 'Graffiti';
-      else if (lower.includes('dumping') || lower.includes('dump')) this.chatState.draft.category = 'Illegal Dumping';
-    }
-
-    // -- Extract Location / Landmark --
-    let locationMatch = null;
-    const roadMatches = text.match(/(?:at|near|on|in front of|opposite|address is)\s+([^,.\n]+)/i);
-    if (roadMatches && roadMatches[1]) {
-      locationMatch = roadMatches[1].trim();
-    } else {
-      const streetRegex = /\b\d+\s+[A-Za-z0-9\s]+(?:St|Street|Ave|Avenue|Rd|Road|Lane|Ln|Dr|Drive|Way)\b/i;
-      const match = text.match(streetRegex);
-      if (match) {
-        locationMatch = match[0];
-      }
-    }
-
-    if (locationMatch && locationMatch.length > 3) {
-      this.chatState.draft.location = locationMatch;
-    } else if (lastAsked === 'location') {
-      const cleanText = text.replace(/[.,]/g, '').trim();
-      if (cleanText.length > 2 && !['yes', 'okay', 'sure', 'fine', 'no problem', 'ok'].includes(cleanText.toLowerCase())) {
-        this.chatState.draft.location = cleanText;
-      }
-    }
-
-    // -- Extract Name --
-    let nameMatch = null;
-    const nameMatches = text.match(/(?:my name is|this is|i am|reporter is)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)/i);
-    if (nameMatches && nameMatches[1]) {
-      nameMatch = nameMatches[1].trim();
-    } else if (lastAsked === 'name') {
-      const cleanName = text.replace(/[.,]/g, '').trim();
-      if (cleanName.length > 2 && cleanName.split(' ').length <= 3 && !['yes', 'okay', 'sure', 'ok'].includes(cleanName.toLowerCase())) {
-        nameMatch = cleanName;
-      }
-    }
-    if (nameMatch) {
-      this.chatState.draft.name = nameMatch;
-    }
-
-    // -- Extract Contact --
-    let contactMatch = null;
-    const emailMatch = text.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/);
-    const phoneMatch = text.match(/\b(?:\+?\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}\b/);
-    if (emailMatch) {
-      contactMatch = emailMatch[0];
-    } else if (phoneMatch) {
-      contactMatch = phoneMatch[0];
-    } else if (lastAsked === 'contact') {
-      const cleanContact = text.replace(/[.,]/g, '').trim();
-      if (cleanContact.length > 4 && !['yes', 'okay', 'ok'].includes(cleanContact.toLowerCase())) {
-        contactMatch = cleanContact;
-      }
-    }
-    if (contactMatch) {
-      this.chatState.draft.contact = contactMatch;
-    }
-
-    // -- Extract Duration --
-    const durationMatch = text.match(/(?:since|for|about)\s+(\d+\s+\w+|\w+\s+days|\w+\s+weeks|yesterday|today)/i);
-    if (durationMatch && durationMatch[1]) {
-      this.chatState.draft.duration = durationMatch[1].trim();
-    }
-
-    // -- Update/Append Description --
-    if (this.chatState.draft.description) {
-      if (text.length > 10 && !this.chatState.draft.description.includes(text)) {
-        this.chatState.draft.description += `. Additional context: ${text}`;
-      }
-    } else {
-      this.chatState.draft.description = text;
-    }
-  },
-
-  getAIResponse() {
-    const draft = this.chatState.draft;
-
-    if (!draft.category) {
-      this.chatState.lastAskedField = 'category';
-      return `I see. Could you clarify what category of issue this is? (e.g., Water Supply, Road Repair / Pothole, Streetlight Outage, Sanitation & Waste, Graffiti, or Illegal Dumping)`;
-    }
-
-    if (!draft.location) {
-      this.chatState.lastAskedField = 'location';
-      return `Got it, I've noted the issue as ${draft.category}. Could you please specify where this issue is located? An address, cross street, or landmark would be helpful.`;
-    }
-
-    if (!draft.name) {
-      this.chatState.lastAskedField = 'name';
-      return `Thanks. What is your name so I can link it as the reporter?`;
-    }
-
-    if (!draft.contact) {
-      this.chatState.lastAskedField = 'contact';
-      return `Got it, ${draft.name}. What email address or phone number should we use to send you status updates?`;
-    }
-
-    this.chatState.lastAskedField = null;
-    const summary = `Perfect! I have collected all the necessary details. Here is a summary of what I've prepared:
-• **Category**: ${draft.category}
-• **Location**: ${draft.location}
-• **Reporter**: ${draft.name} (${draft.contact})
-• **Details**: ${draft.description}
-
-Please review the final draft on the right and click "Submit Report" when you are ready to log the complaint.`;
-    return summary;
-  },
-
-  generateAIDraft() {
+  async generateAIDraft() {
     const raw = document.getElementById('res-ai-chat-input').value.trim();
     if (!raw) {
       window.showToast('Please type a message first.', 'error');
       return;
     }
 
-    // Add user message
+    // 1. Add user message
     this.chatState.history.push({ sender: 'user', text: raw });
     document.getElementById('res-ai-chat-input').value = '';
     this.updateAIChatUI();
 
-    // Parse details
-    this.parseUserMessage(raw);
-    this.updateAIDraftUI();
+    try {
+      // 2. Call backend structured JSON geocoding/chat endpoint
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: raw,
+          draft: {
+            category: this.chatState.draft.category,
+            priority: this.chatState.draft.priority,
+            landmark: this.chatState.draft.landmark,
+            city: this.chatState.draft.city,
+            formal_description: this.chatState.draft.formal_description,
+            reporter_name: this.chatState.draft.reporter_name,
+            contact: this.chatState.draft.contact,
+            lastAskedField: this.chatState.lastAskedField
+          }
+        })
+      });
 
-    // Formulate response
-    setTimeout(() => {
-      const response = this.getAIResponse();
-      this.chatState.history.push({ sender: 'ai', text: response });
-      this.updateAIChatUI();
-    }, 600);
+      if (!response.ok) {
+        throw new Error('Failed to get response from AI');
+      }
+
+      // 3. Receive structured JSON
+      const json = await response.json();
+
+      // 4. Update local chatState draft and details
+      this.chatState.draft.category = json.category;
+      this.chatState.draft.priority = json.priority;
+      this.chatState.draft.landmark = json.landmark;
+      this.chatState.draft.city = json.city;
+      this.chatState.draft.formal_description = json.formal_description;
+      this.chatState.draft.location = [json.landmark, json.city].filter(Boolean).join(', ');
+      
+      // Update name/contact if newly resolved
+      if (json.reporter_name) this.chatState.draft.reporter_name = json.reporter_name;
+      if (json.contact) this.chatState.draft.contact = json.contact;
+      
+      this.chatState.draft.name = this.chatState.draft.reporter_name;
+      this.chatState.draft.contact = this.chatState.draft.contact;
+
+      this.chatState.lastAskedField = json.lastAskedField;
+
+      // 5. Trigger Draft Auto-Fill UI updates
+      this.updateAIDraftUI();
+
+      // 6. Push AI conversational reply to log
+      setTimeout(() => {
+        this.chatState.history.push({ sender: 'ai', text: json.reply });
+        this.updateAIChatUI();
+      }, 500);
+
+    } catch (err) {
+      console.error('AI chat error:', err);
+      window.showToast('Failed to connect to AI coprocessor.', 'error');
+    }
   },
 
   async submitAIDraft() {
