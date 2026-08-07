@@ -64,6 +64,7 @@ def _get_client() -> Any:
     """Return the singleton Qdrant client.
 
     Creates the client on first call. Thread-safe.
+    Automatically detects whether to use Qdrant Cloud or local Qdrant.
 
     Returns:
         A connected QdrantClient instance.
@@ -80,34 +81,39 @@ def _get_client() -> Any:
         if _client_instance is not None:
             return _client_instance
 
-        logger.info(
-            "Connecting to Qdrant at %s:%d",
-            QDRANT_HOST,
-            QDRANT_PORT,
-        )
-
         try:
             from qdrant_client import QdrantClient
-
-            _client_instance = QdrantClient(
-                host=QDRANT_HOST,
-                port=QDRANT_PORT,
-            )
-
-            logger.info("Qdrant client connected successfully.")
-
-            return _client_instance
-
+            import httpx
         except ImportError as exc:
             raise VectorStoreError(
-                "qdrant-client is not installed. "
-                "Run: pip install qdrant-client"
+                "qdrant-client or httpx is not installed. "
+                "Run: pip install qdrant-client httpx"
             ) from exc
+
+        try:
+            if QDRANT_URL:
+                logger.info("Connecting to Qdrant Cloud at %s", QDRANT_URL)
+                _client_instance = QdrantClient(
+                    url=QDRANT_URL,
+                    api_key=QDRANT_API_KEY,
+                )
+            else:
+                logger.info(
+                    "Connecting to local Qdrant at %s:%d",
+                    QDRANT_HOST,
+                    QDRANT_PORT,
+                )
+                _client_instance = QdrantClient(
+                    host=QDRANT_HOST,
+                    port=QDRANT_PORT,
+                )
+
+            logger.info("Qdrant client initialized successfully.")
+            return _client_instance
 
         except Exception as exc:
             raise VectorStoreError(
-                f"Failed to connect to Qdrant at "
-                f"{QDRANT_HOST}:{QDRANT_PORT}: {exc}"
+                f"Failed to initialize Qdrant client: {exc}"
             ) from exc
 
 
