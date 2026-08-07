@@ -329,8 +329,8 @@ const ResidentPortal = {
         priority: 'Moderate',
         description: null,
         location: null,
-        name: window.appState && window.appState.currentUser ? window.appState.currentUser.name : null,
-        contact: window.appState && window.appState.currentUser ? window.appState.currentUser.email : null,
+        name: null,
+        contact: null,
         duration: 'Not specified'
       },
       started: true
@@ -530,7 +530,7 @@ Please review the final draft on the right and click "Submit Report" when you ar
 
   async submitAIDraft() {
     const draft = this.chatState.draft;
-    if (!draft.category || !draft.location) {
+    if (!draft.category || !draft.location || !draft.name || !draft.contact) {
       window.showToast('AI draft is incomplete. Please finish the conversation or provide missing info.', 'error');
       return;
     }
