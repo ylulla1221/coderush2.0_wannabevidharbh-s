@@ -792,6 +792,113 @@ app.post('/api/chat', (req, res) => {
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN USER MANAGEMENT API
+// ─────────────────────────────────────────────────────────────────────────────
+
+// GET /api/admin/users — list all users (officers + operators)
+app.get('/api/admin/users', async (req, res) => {
+  try {
+    const users = await User.find({}, '-__v').sort({ createdAt: -1 });
+    res.json(users.map(u => ({
+      id: u._id.toString(),
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      department: u.department,
+      ward: u.ward,
+      createdAt: u.createdAt
+    })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/users — create a new officer/operator account
+app.post('/api/admin/users', async (req, res) => {
+  const { name, email, password, role, department, ward } = req.body;
+
+  if (!name || !email || !password || !role) {
+    return res.status(400).json({ error: 'name, email, password and role are required.' });
+  }
+  if (!['MUNICIPAL_OFFICER', 'OPERATOR', 'RESIDENT'].includes(role)) {
+    return res.status(400).json({ error: 'Invalid role. Use MUNICIPAL_OFFICER, OPERATOR or RESIDENT.' });
+  }
+
+  try {
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return res.status(409).json({ error: 'A user with this email already exists.' });
+    }
+
+    const user = await User.create({
+      name,
+      email,
+      passwordHash: password,   // plain for now; swap for bcrypt in production
+      role,
+      department: department || 'General',
+      ward: ward || 'All Wards'
+    });
+
+    res.status(201).json({
+      id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      department: user.department,
+      ward: user.ward,
+      createdAt: user.createdAt
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/admin/users/:id — update user details
+app.put('/api/admin/users/:id', async (req, res) => {
+  const { name, email, department, ward, role } = req.body;
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { name, email, department, ward, role },
+      { new: true, runValidators: true }
+    );
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+    res.json({ id: user._id.toString(), name: user.name, email: user.email, role: user.role, department: user.department, ward: user.ward });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin/users/:id — remove a user account
+app.delete('/api/admin/users/:id', async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+    res.json({ success: true, message: `User "${user.name}" deleted.` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/stats — dashboard statistics
+app.get('/api/admin/stats', async (req, res) => {
+  try {
+    const [totalUsers, officers, operators, residents, totalComplaints, resolved, pending] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ role: 'MUNICIPAL_OFFICER' }),
+      User.countDocuments({ role: 'OPERATOR' }),
+      User.countDocuments({ role: 'RESIDENT' }),
+      Complaint.countDocuments(),
+      Complaint.countDocuments({ status: 'RESOLVED' }),
+      Complaint.countDocuments({ status: 'PENDING' })
+    ]);
+    res.json({ totalUsers, officers, operators, residents, totalComplaints, resolved, pending });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Start Server
 app.listen(PORT, () => {
   console.log(`CivicPulse backend server running on port ${PORT}`);
