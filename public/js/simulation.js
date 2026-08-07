@@ -103,13 +103,13 @@ const SimulationTab = {
       this.map = null;
     }
 
-    // Centered around Chicago loop / Ward 12
-    const lat = 41.8795;
-    const lng = -87.6255;
+    // Centered on Nagpur, Maharashtra, India
+    const lat = 21.1458;
+    const lng = 79.0882;
 
     this.map = L.map('simulation-map', {
       zoomControl: true,
-      attributionControl: false
+      attributionControl: true
     }).setView([lat, lng], 13);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -123,26 +123,27 @@ const SimulationTab = {
 
   renderOverlays() {
     this.overlayLayer.clearLayers();
-    const lat = 41.8795;
-    const lng = -87.6255;
+    // Nagpur city center
+    const lat = 21.1458;
+    const lng = 79.0882;
 
     if (this.currentOverlayType === 'density') {
-      // Draw traffic gridlock zones (red overlay circles)
-      L.circle([lat + 0.005, lng - 0.005], {
+      // Draw traffic gridlock zones (red overlay circles) around Nagpur
+      L.circle([lat + 0.005, lng + 0.005], {
         radius: 400,
         color: '#ef4444',
         fillColor: '#ef4444',
         fillOpacity: 0.45,
         weight: 1
-      }).addTo(this.overlayLayer).bindPopup('Gridlock Zone: Sector 4 (Highway 42)');
+      }).addTo(this.overlayLayer).bindPopup('Gridlock Zone: Sitabuldi Market Area');
 
-      L.circle([lat - 0.008, lng + 0.008], {
+      L.circle([lat - 0.008, lng - 0.008], {
         radius: 300,
         color: '#f59e0b',
         fillColor: '#f59e0b',
         fillOpacity: 0.35,
         weight: 1
-      }).addTo(this.overlayLayer).bindPopup('Congestion Zone: Sector 5');
+      }).addTo(this.overlayLayer).bindPopup('Congestion Zone: Wardha Road Junction');
     } else {
       // Draw Dispatch Centers Response buffers (blue overlay buffers)
       L.circle([lat + 0.012, lng + 0.012], {
@@ -152,7 +153,7 @@ const SimulationTab = {
         fillOpacity: 0.15,
         weight: 1.5,
         dashArray: '5, 5'
-      }).addTo(this.overlayLayer).bindPopup('Response Unit A coverage');
+      }).addTo(this.overlayLayer).bindPopup('Response Unit A — Dharampeth Coverage');
 
       L.circle([lat - 0.012, lng - 0.012], {
         radius: 1000,
@@ -161,7 +162,7 @@ const SimulationTab = {
         fillOpacity: 0.15,
         weight: 1.5,
         dashArray: '5, 5'
-      }).addTo(this.overlayLayer).bindPopup('Response Unit B coverage');
+      }).addTo(this.overlayLayer).bindPopup('Response Unit B — Hingna Road Coverage');
     }
   },
 
