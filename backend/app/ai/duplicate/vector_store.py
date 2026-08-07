@@ -264,11 +264,11 @@ def search_similar(
     client = _get_client()
 
     try:
-        results = client.search(
+        results = client.query_points(
             collection_name=QDRANT_COLLECTION,
-            query_vector=vector,
+            query=vector,
             limit=limit,
-        )
+        ).points
 
         matches: list[dict[str, Any]] = []
 
@@ -292,11 +292,8 @@ def search_similar(
 
     except VectorStoreError:
         raise
-
     except Exception as exc:
-        raise VectorStoreError(
-            f"Similarity search failed: {exc}"
-        ) from exc
+        raise _handle_qdrant_error(exc, "Similarity search failed") from exc
 
 
 def delete_complaint(complaint_id: str) -> None:
