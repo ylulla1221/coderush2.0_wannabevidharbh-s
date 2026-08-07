@@ -198,3 +198,58 @@ class RoutingResult(BaseModel):
         default=False,
         description="True when the location was successfully resolved to a jurisdiction.",
     )
+
+    # -------------------------------------------------------------------------
+    # Phase 3 — Intelligent Routing Decision Engine fields
+    # -------------------------------------------------------------------------
+
+    routing_confidence: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Composite confidence score for the routing decision (0.0–1.0).",
+    )
+
+    routing_confidence_percentage: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=100.0,
+        description="Routing confidence expressed as a percentage (0.0–100.0).",
+    )
+
+    routing_confidence_level: str = Field(
+        default="Low",
+        description=(
+            "Human-readable confidence band: "
+            "\"Very High\" | \"High\" | \"Medium\" | \"Low\"."
+        ),
+    )
+
+    human_review_required: bool = Field(
+        default=False,
+        description=(
+            "True when the routing decision should be reviewed by a human "
+            "(low confidence, unknown category, or unknown jurisdiction)."
+        ),
+    )
+
+    decision_status: str = Field(
+        default="human_review",
+        description=(
+            "\"automatic\" when routed with sufficient confidence; "
+            "\"human_review\" when a reviewer should inspect the decision."
+        ),
+    )
+
+    alternative_department: str | None = Field(
+        default=None,
+        description="Optional secondary department that may also handle this complaint.",
+    )
+
+    decision_explanation: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Ordered, citizen-facing explanation of how the routing decision "
+            "was reached. Generated deterministically — no LLM involved."
+        ),
+    )

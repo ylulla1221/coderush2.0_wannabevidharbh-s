@@ -339,7 +339,8 @@ def _resolve_kb_metadata(
 
     Returns:
         A tuple of
-        (department_code, description, default_explanation, routing_status).
+        (department_code, description, default_explanation, routing_status,
+         alternative_department).
     """
     route = lookup_category(category)
 
@@ -354,6 +355,7 @@ def _resolve_kb_metadata(
             route.description,
             route.default_explanation,
             route.routing_status,
+            route.alternative_department,
         )
 
     # Unknown category — return the safe fallback values
@@ -367,6 +369,7 @@ def _resolve_kb_metadata(
         fallback.description,
         fallback.default_explanation,
         fallback.routing_status,
+        fallback.alternative_department,
     )
 
 
@@ -412,6 +415,136 @@ def _resolve_jurisdiction(
     return None, None, None, False
 
 
+# =============================================================================
+# PRIVATE — PHASE 3: CONFIDENCE SCORING
+#
+# Computes a simple, fully deterministic composite confidence score for the
+# routing decision.  The score is based on three observable signals:
+#   1. CategoryConfidence  — how confident the upstream LLM was in its category.
+#   2. JurisdictionConfidence — whether the location was resolved.
+#   3. DepartmentConfidence — whether a known department was matched.
+# NO machine learning, NO randomness, NO external calls.
+# =============================================================================
+
+
+# Confidence thresholds and labels (Phase 3)
+_CONF_VERY_HIGH: float = 0.95
+_CONF_HIGH: float = 0.90
+_CONF_MEDIUM: float = 0.80
+
+# Human-review triggers: confidence below this level always requires review
+_CONF_REVIEW_THRESHOLD: float = _CONF_MEDIUM
+
+
+def _resolve_confidence(
+    category_confidence: float,
+    jurisdiction_found: bool,
+    department_resolved: bool,
+) -> tuple[float, float, str]:
+    """Compute the routing confidence score and level.
+
+    Equation::
+
+        Confidence = 0.50 x CategoryConfidence
+                   + 0.30 x JurisdictionConfidence
+                   + 0.20 x DepartmentConfidence
+
+    All component inputs are clamped to [0.0, 1.0] before use.
+    The final result is also clamped to [0.0, 1.0].
+
+    Args:
+        category_confidence: LLM confidence in the category (0.0–1.0).
+            Pass 1.0 when the upstream confidence is unavailable.
+        jurisdiction_found:  True when Phase 2 resolved the location.
+        department_resolved: True when a known department was matched.
+
+    Returns:
+        A tuple of (routing_confidence, routing_confidence_percentage,
+        routing_confidence_level).
+    """
+    cat_conf = max(0.0, min(1.0, float(category_confidence)))
+    jur_conf = 1.0 if jurisdiction_found else 0.0
+    dep_conf = 1.0 if department_resolved else 0.0
+
+    raw = (0.50 * cat_conf) + (0.30 * jur_conf) + (0.20 * dep_conf)
+    confidence = max(0.0, min(1.0, raw))
+    percentage = round(confidence * 100.0, 1)
+
+    if confidence >= _CONF_VERY_HIGH:
+        level = "Very High"
+    elif confidence >= _CONF_HIGH:
+        level = "High"
+    elif confidence >= _CONF_MEDIUM:
+        level = "Medium"
+    else:
+        level = "Low"
+
+    return round(confidence, 3), percentage, level
+
+
+# =============================================================================
+# PRIVATE — PHASE 3: DECISION EXPLANATION
+#
+# Builds a structured, citizen-facing explanation list from observable facts.
+# Entirely deterministic template logic — zero LLM involvement.
+# =============================================================================
+
+
+def _build_decision_explanation(
+    category: str | None,
+    department: str,
+    ward: str | None,
+    municipal_body: str | None,
+    jurisdiction_found: bool,
+    routing_confidence_level: str,
+    human_review_required: bool,
+) -> list[str]:
+    """Build a structured decision explanation for the routing result.
+
+    Each sentence is generated from a deterministic template based on
+    observable routing facts. No randomness, no LLM, no external I/O.
+
+    Args:
+        category:                 Civic issue category (may be None).
+        department:               Resolved department name.
+        ward:                     Resolved ward, or None.
+        municipal_body:           Resolved municipal corporation, or None.
+        jurisdiction_found:       Whether jurisdiction was resolved.
+        routing_confidence_level: Confidence band string.
+        human_review_required:    Whether human review is triggered.
+
+    Returns:
+        Ordered list of human-readable explanation strings.
+    """
+    explanation: list[str] = []
+
+    # Department sentence
+    if category:
+        explanation.append(
+            f"Category '{category}' mapped to {department}."
+        )
+    else:
+        explanation.append(
+            f"Department determined from category: {department}."
+        )
+
+    # Jurisdiction sentences
+    if jurisdiction_found and ward and municipal_body:
+        explanation.append(f"Jurisdiction resolved to {ward}.")
+        explanation.append(f"Municipal body: {municipal_body}.")
+    else:
+        explanation.append("Jurisdiction could not be resolved.")
+
+    # Confidence sentence
+    explanation.append(f"Routing confidence is {routing_confidence_level}.")
+
+    # Review sentence
+    if human_review_required:
+        explanation.append("Manual review recommended.")
+
+    return explanation
+
+
 
 # =============================================================================
 # FALLBACK RESULT
@@ -450,6 +583,18 @@ def _build_fallback_result(exc: Exception) -> dict[str, Any]:
         zone_jurisdiction=None,
         municipal_body=None,
         jurisdiction_found=False,
+        # Phase 3 — Decision Engine fields
+        routing_confidence=0.0,
+        routing_confidence_percentage=0.0,
+        routing_confidence_level="Low",
+        human_review_required=True,
+        decision_status="human_review",
+        alternative_department=kb_fallback.alternative_department,
+        decision_explanation=[
+            "Input validation failed; routing could not be determined.",
+            f"Cause: {exc}",
+            "Manual review required.",
+        ],
     ).model_dump()
 
 
@@ -596,9 +741,12 @@ def calculate_route(
     # Step 7 — Phase 1: Routing Knowledge Base metadata
     # ------------------------------------------------------------------
 
-    dept_code, kb_description, kb_explanation, routing_status = _resolve_kb_metadata(
+    dept_code, kb_description, kb_explanation, routing_status, alt_dept = _resolve_kb_metadata(
         validated.category, reasons
     )
+
+    # Determine whether a known department was matched (for Phase 3)
+    department_resolved: bool = routing_status == "success"
 
     # ------------------------------------------------------------------
     # Step 8 — Phase 2: Jurisdiction & Geography
@@ -609,7 +757,51 @@ def calculate_route(
     )
 
     # ------------------------------------------------------------------
-    # Step 9 — assemble result
+    # Step 9 — Phase 3: Routing Confidence
+    # ------------------------------------------------------------------
+
+    # complaint_data may carry an upstream LLM confidence (0.0–1.0).
+    # Fall back to 1.0 when absent so confidence is not unfairly penalised.
+    category_confidence: float = float(
+        complaint_data.get("confidence", 1.0) or 1.0
+    )
+    category_confidence = max(0.0, min(1.0, category_confidence))
+
+    routing_confidence, routing_confidence_pct, routing_confidence_level = (
+        _resolve_confidence(
+            category_confidence=category_confidence,
+            jurisdiction_found=jurisdiction_found,
+            department_resolved=department_resolved,
+        )
+    )
+
+    # ------------------------------------------------------------------
+    # Step 10 — Phase 3: Human Review & Decision Status
+    # ------------------------------------------------------------------
+
+    human_review_required: bool = (
+        routing_confidence < _CONF_REVIEW_THRESHOLD
+        or not department_resolved
+        or not jurisdiction_found
+    )
+    decision_status: str = "human_review" if human_review_required else "automatic"
+
+    # ------------------------------------------------------------------
+    # Step 11 — Phase 3: Decision Explanation
+    # ------------------------------------------------------------------
+
+    decision_explanation = _build_decision_explanation(
+        category=validated.category,
+        department=department,
+        ward=ward,
+        municipal_body=municipal_body,
+        jurisdiction_found=jurisdiction_found,
+        routing_confidence_level=routing_confidence_level,
+        human_review_required=human_review_required,
+    )
+
+    # ------------------------------------------------------------------
+    # Step 12 — assemble result
     # ------------------------------------------------------------------
 
     result = RoutingResult(
@@ -629,12 +821,21 @@ def calculate_route(
         zone_jurisdiction=zone_jurisdiction,
         municipal_body=municipal_body,
         jurisdiction_found=jurisdiction_found,
+        # Phase 3 — Decision Engine fields
+        routing_confidence=routing_confidence,
+        routing_confidence_percentage=routing_confidence_pct,
+        routing_confidence_level=routing_confidence_level,
+        human_review_required=human_review_required,
+        decision_status=decision_status,
+        alternative_department=alt_dept,
+        decision_explanation=decision_explanation,
     )
 
     logger.info(
         "Routing completed | Department=%s (%s) | Team=%s | "
         "Zone=%s | SLA=%dh | Escalation=%s | Status=%s | "
-        "Ward=%s | MunicipalBody=%s | JurisdictionFound=%s",
+        "Ward=%s | MunicipalBody=%s | JurisdictionFound=%s | "
+        "Confidence=%.3f (%s) | HumanReview=%s | DecisionStatus=%s",
         result.department,
         result.department_code,
         result.team,
@@ -645,6 +846,10 @@ def calculate_route(
         result.ward,
         result.municipal_body,
         result.jurisdiction_found,
+        result.routing_confidence,
+        result.routing_confidence_level,
+        result.human_review_required,
+        result.decision_status,
     )
     logger.info("=" * 80)
 
