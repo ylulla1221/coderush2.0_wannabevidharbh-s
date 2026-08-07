@@ -189,6 +189,7 @@ const ResidentPortal = {
       aiBtn.className = "px-4 py-2 bg-white text-primary rounded-md shadow-sm border border-outline-variant/10";
       
       this.initAIIntakeMap();
+      this.resetAIChat();
     }
   },
 
@@ -297,65 +298,248 @@ const ResidentPortal = {
     }
   },
 
-  // LLM Parse drafting
-  generateAIDraft() {
-    const raw = document.getElementById('res-ai-chat-input').value.trim();
-    if (!raw) {
-      window.showToast('Please type issue details first.', 'error');
-      return;
-    }
+  // Chat State Initialization
+  chatState: {
+    history: [],
+    draft: {
+      category: null,
+      priority: 'Moderate',
+      description: null,
+      location: null,
+      name: null,
+      contact: null,
+      duration: 'Not specified'
+    },
+    started: false
+  },
 
+  resetAIChat() {
+    this.chatState = {
+      history: [
+        { sender: 'ai', text: `Hi! I am your CivicPulse AI Assistant. Describe the issue you noticed (and include details like location, name, and description if possible), and I will help format the redressal request.` }
+      ],
+      draft: {
+        category: null,
+        priority: 'Moderate',
+        description: null,
+        location: null,
+        name: window.appState && window.appState.currentUser ? window.appState.currentUser.name : null,
+        contact: window.appState && window.appState.currentUser ? window.appState.currentUser.email : null,
+        duration: 'Not specified'
+      },
+      started: true
+    };
+    this.updateAIChatUI();
+    this.updateAIDraftUI();
+  },
+
+  updateAIChatUI() {
+    const historyContainer = document.getElementById('res-ai-chat-history');
+    if (!historyContainer) return;
+
+    historyContainer.innerHTML = '';
+    this.chatState.history.forEach(msg => {
+      const isAI = msg.sender === 'ai';
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `flex gap-2.5 items-start ${isAI ? '' : 'justify-end'}`;
+      
+      const avatarHTML = isAI ? `
+        <div class="w-6 h-6 rounded-full bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined text-sm font-semibold">smart_toy</span>
+        </div>
+      ` : `
+        <div class="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 order-2">
+          <span class="material-symbols-outlined text-sm font-semibold">person</span>
+        </div>
+      `;
+
+      msgDiv.innerHTML = `
+        ${avatarHTML}
+        <div class="${isAI ? 'bg-white border border-outline-variant/60 text-primary' : 'bg-secondary text-white'} p-2.5 rounded-lg max-w-[80%] ${isAI ? '' : 'order-1'}">
+          <p class="font-sans leading-relaxed text-[11px] whitespace-pre-wrap">${msg.text}</p>
+        </div>
+      `;
+      historyContainer.appendChild(msgDiv);
+    });
+
+    // Scroll to bottom
+    historyContainer.scrollTop = historyContainer.scrollHeight;
+  },
+
+  updateAIDraftUI() {
     const awaiting = document.getElementById('res-ai-awaiting-view');
     const content = document.getElementById('res-ai-draft-content');
 
-    awaiting.classList.add('hidden');
-    content.classList.remove('hidden');
-
-    // Populate structured details based on inputs
-    let category = 'Road Maintenance';
-    let priority = 'Moderate';
-    let desc = 'A significant pothole has been reported near Main St, located specifically in front of the old library structure. The degradation has been present for approximately one week and appears to be expanding.';
-    let landmark = 'Old Library';
-    let duration = 'one week';
-
-    if (raw.toLowerCase().includes('water') || raw.toLowerCase().includes('pipe')) {
-      category = 'Water Supply';
-      priority = 'Urgent';
-      landmark = 'Miller Park Gate 2';
-      duration = 'since yesterday';
-      desc = 'Water leak report. Large water main leakage reported near Miller Park Gate 2. Flooding on pathways.';
+    if (awaiting && content) {
+      awaiting.classList.add('hidden');
+      content.classList.remove('hidden');
     }
 
-    document.getElementById('res-ai-suggested-cat').textContent = category;
-    document.getElementById('res-ai-suggested-pri').textContent = priority;
-    document.getElementById('res-ai-suggested-pri').className = priority === 'Urgent' 
-      ? 'inline-block px-2.5 py-0.5 bg-red-100 text-red-800 border border-red-200 rounded-full font-bold uppercase text-[9px]'
-      : 'inline-block px-2.5 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 rounded-full font-bold uppercase text-[9px]';
-    
-    document.getElementById('res-ai-landmark').textContent = landmark;
-    document.getElementById('res-ai-duration').textContent = duration;
-    document.getElementById('res-ai-formal-desc').textContent = desc;
+    const catEl = document.getElementById('res-ai-suggested-cat');
+    const priEl = document.getElementById('res-ai-suggested-pri');
+    const landmarkEl = document.getElementById('res-ai-landmark');
+    const durationEl = document.getElementById('res-ai-duration');
+    const descEl = document.getElementById('res-ai-formal-desc');
+    const nameEl = document.getElementById('res-ai-reporter-name');
+    const contactEl = document.getElementById('res-ai-reporter-contact');
 
-    window.showToast('AI draft successfully generated!');
+    if (catEl) catEl.textContent = this.chatState.draft.category || 'Not identified yet';
+    if (priEl) {
+      const priority = this.chatState.draft.priority || 'Moderate';
+      priEl.textContent = priority;
+      priEl.className = priority === 'Urgent'
+        ? 'inline-block px-2.5 py-0.5 bg-red-100 text-red-800 border border-red-200 rounded-full font-bold uppercase text-[9px]'
+        : 'inline-block px-2.5 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 rounded-full font-bold uppercase text-[9px]';
+    }
+    if (landmarkEl) landmarkEl.textContent = this.chatState.draft.location || 'Not identified yet';
+    if (durationEl) durationEl.textContent = this.chatState.draft.duration || 'Not specified';
+    if (descEl) descEl.textContent = this.chatState.draft.description || 'Provide details on the left...';
+    if (nameEl) nameEl.textContent = this.chatState.draft.name || 'Not identified yet';
+    if (contactEl) contactEl.textContent = this.chatState.draft.contact || 'Not identified yet';
+  },
+
+  parseUserMessage(text) {
+    const lower = text.toLowerCase();
+
+    // -- Extract Category --
+    if (lower.includes('water') || lower.includes('pipe') || lower.includes('leak') || lower.includes('sewage') || lower.includes('flood') || lower.includes('drain')) {
+      this.chatState.draft.category = 'Water Supply';
+      this.chatState.draft.priority = 'Urgent';
+    } else if (lower.includes('pothole') || lower.includes('road') || lower.includes('crack') || lower.includes('street repair') || lower.includes('asphalt')) {
+      this.chatState.draft.category = 'Road Repair / Pothole';
+      this.chatState.draft.priority = 'Moderate';
+    } else if (lower.includes('streetlight') || lower.includes('lamp') || lower.includes('dark') || lower.includes('light bulb') || lower.includes('blackout')) {
+      this.chatState.draft.category = 'Streetlight Outage';
+      this.chatState.draft.priority = 'Low';
+    } else if (lower.includes('garbage') || lower.includes('trash') || lower.includes('waste') || lower.includes('bin') || lower.includes('sanitation') || lower.includes('smell')) {
+      this.chatState.draft.category = 'Sanitation & Waste';
+      this.chatState.draft.priority = 'Moderate';
+    } else if (lower.includes('graffiti') || lower.includes('paint') || lower.includes('spray') || lower.includes('vandalism')) {
+      this.chatState.draft.category = 'Graffiti';
+      this.chatState.draft.priority = 'Low';
+    } else if (lower.includes('dumping') || lower.includes('debris') || lower.includes('illegal dump')) {
+      this.chatState.draft.category = 'Illegal Dumping';
+      this.chatState.draft.priority = 'Moderate';
+    }
+
+    // -- Extract Location / Landmark --
+    let locationMatch = null;
+    const roadMatches = text.match(/(?:at|near|on|in front of|opposite|address is)\s+([^,.\n]+)/i);
+    if (roadMatches && roadMatches[1]) {
+      locationMatch = roadMatches[1].trim();
+    } else {
+      const streetRegex = /\b\d+\s+[A-Za-z0-9\s]+(?:St|Street|Ave|Avenue|Rd|Road|Lane|Ln|Dr|Drive|Way)\b/i;
+      const match = text.match(streetRegex);
+      if (match) {
+        locationMatch = match[0];
+      }
+    }
+    if (locationMatch && locationMatch.length > 3) {
+      this.chatState.draft.location = locationMatch;
+    }
+
+    // -- Extract Name --
+    const nameMatches = text.match(/(?:my name is|this is|i am|reporter is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/);
+    if (nameMatches && nameMatches[1]) {
+      this.chatState.draft.name = nameMatches[1].trim();
+    }
+
+    // -- Extract Contact --
+    const emailMatch = text.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/);
+    const phoneMatch = text.match(/\b(?:\+?\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}\b/);
+    if (emailMatch) {
+      this.chatState.draft.contact = emailMatch[0];
+    } else if (phoneMatch) {
+      this.chatState.draft.contact = phoneMatch[0];
+    }
+
+    // -- Extract Duration --
+    const durationMatch = text.match(/(?:since|for|about)\s+(\d+\s+\w+|\w+\s+days|\w+\s+weeks|yesterday|today)/i);
+    if (durationMatch && durationMatch[1]) {
+      this.chatState.draft.duration = durationMatch[1].trim();
+    }
+
+    // -- Update/Append Description --
+    if (this.chatState.draft.description) {
+      if (text.length > 10 && !this.chatState.draft.description.includes(text)) {
+        this.chatState.draft.description += `. Additional context: ${text}`;
+      }
+    } else {
+      this.chatState.draft.description = text;
+    }
+  },
+
+  getAIResponse() {
+    const draft = this.chatState.draft;
+
+    if (!draft.category) {
+      return `I see. Could you clarify what category of issue this is? (e.g., Water Supply, Road Repair / Pothole, Streetlight Outage, Sanitation & Waste, Graffiti, or Illegal Dumping)`;
+    }
+
+    if (!draft.location) {
+      return `Got it, I've noted the issue as ${draft.category}. Could you please specify where this issue is located? An address, cross street, or landmark would be helpful.`;
+    }
+
+    if (!draft.name) {
+      return `Thanks. What is your name so I can link it as the reporter?`;
+    }
+
+    if (!draft.contact) {
+      return `Got it, ${draft.name}. What email address or phone number should we use to send you status updates?`;
+    }
+
+    const summary = `Perfect! I have collected all the necessary details. Here is a summary of what I've prepared:
+• **Category**: ${draft.category}
+• **Location**: ${draft.location}
+• **Reporter**: ${draft.name} (${draft.contact})
+• **Details**: ${draft.description}
+
+Please review the final draft on the right and click "Submit Report" when you are ready to log the complaint.`;
+    return summary;
+  },
+
+  generateAIDraft() {
+    const raw = document.getElementById('res-ai-chat-input').value.trim();
+    if (!raw) {
+      window.showToast('Please type a message first.', 'error');
+      return;
+    }
+
+    // Add user message
+    this.chatState.history.push({ sender: 'user', text: raw });
+    document.getElementById('res-ai-chat-input').value = '';
+    this.updateAIChatUI();
+
+    // Parse details
+    this.parseUserMessage(raw);
+    this.updateAIDraftUI();
+
+    // Formulate response
+    setTimeout(() => {
+      const response = this.getAIResponse();
+      this.chatState.history.push({ sender: 'ai', text: response });
+      this.updateAIChatUI();
+    }, 600);
   },
 
   async submitAIDraft() {
-    const category = document.getElementById('res-ai-suggested-cat').textContent;
-    const description = document.getElementById('res-ai-formal-desc').textContent;
-    const priority = document.getElementById('res-ai-suggested-pri').textContent;
-    const landmark = document.getElementById('res-ai-landmark').textContent;
+    const draft = this.chatState.draft;
+    if (!draft.category || !draft.location) {
+      window.showToast('AI draft is incomplete. Please finish the conversation or provide missing info.', 'error');
+      return;
+    }
 
     const id = `CR-${Math.floor(1000 + Math.random() * 9000)}`;
     const newTicket = {
       id,
-      category,
-      description,
+      category: draft.category,
+      description: draft.description || `Complaint logged via AI generator at ${draft.location}`,
       lat: 47.6062,
       lng: -122.3321,
-      address: `Near ${landmark}, Seattle`,
-      reporterName: window.appState.currentUser.name,
-      reporterContact: window.appState.currentUser.email,
-      priority,
+      address: draft.location,
+      reporterName: draft.name || (window.appState && window.appState.currentUser ? window.appState.currentUser.name : 'Resident'),
+      reporterContact: draft.contact || (window.appState && window.appState.currentUser ? window.appState.currentUser.email : 'contact@municipal.gov'),
+      priority: draft.priority || 'Moderate',
       status: 'Submitted'
     };
 
@@ -363,9 +547,7 @@ const ResidentPortal = {
       await window.API.createComplaint(newTicket);
       window.showToast(`AI Draft successfully submitted! Reference: ${id}`);
       
-      document.getElementById('res-ai-chat-input').value = '';
-      document.getElementById('res-ai-awaiting-view').classList.remove('hidden');
-      document.getElementById('res-ai-draft-content').classList.add('hidden');
+      this.resetAIChat();
 
       await this.fetchData();
       this.switchTab('dashboard');

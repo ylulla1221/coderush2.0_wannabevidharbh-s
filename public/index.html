@@ -839,15 +839,30 @@
         <!-- Left: Describe issue & map (8 Cols) -->
         <div class="lg:col-span-8 space-y-4">
           <div class="bg-white p-6 rounded-xl border border-outline-variant shadow-sm space-y-4">
-            <div class="flex justify-between items-center">
-              <h3 class="font-sans font-bold text-sm text-primary uppercase tracking-wider">Describe your issue</h3>
+            <div class="flex justify-between items-center pb-2 border-b border-outline-variant">
+              <h3 class="font-sans font-bold text-sm text-primary uppercase tracking-wider flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-secondary text-base">forum</span>
+                AI Smart Assistant
+              </h3>
               <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary" onclick="toggleVoiceRecordingSimulation()">mic</span>
+            </div>
+
+            <!-- Chat History Log -->
+            <div id="res-ai-chat-history" class="h-64 overflow-y-auto space-y-3 p-3 bg-surface-container rounded-lg border border-outline-variant/30 text-xs">
+              <div class="flex gap-2.5 items-start">
+                <div class="w-6 h-6 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
+                  <span class="material-symbols-outlined text-xs">smart_toy</span>
+                </div>
+                <div class="bg-white p-2.5 rounded-lg border border-outline-variant max-w-[80%]">
+                  <p class="font-sans leading-relaxed text-on-surface-variant">Hello! I am your AI assistant. Tell me about the municipal issue you noticed, and I will help format a redressal request.</p>
+                </div>
+              </div>
             </div>
             
             <div class="relative">
-              <textarea id="res-ai-chat-input" rows="5" placeholder="E.g., There's a massive pothole on Main St right in front of the old library. It's been there for a week and getting worse. I hit it yesterday and nearly popped a tire..." class="w-full p-3 border border-outline-variant rounded-lg bg-surface text-xs focus:ring-1 focus:ring-secondary focus:border-primary"></textarea>
+              <textarea id="res-ai-chat-input" rows="3" placeholder="E.g., There's a massive pothole on Main St right in front of the old library. It's been there for a week and getting worse..." class="w-full p-3 pr-24 border border-outline-variant rounded-lg bg-surface text-xs focus:ring-1 focus:ring-secondary focus:border-primary"></textarea>
               <button onclick="generateResidentAIDraft()" class="absolute bottom-3 right-3 bg-secondary hover:bg-[#00524b] text-white text-xs font-bold px-4 py-2 rounded-lg transition-all active:scale-95 flex items-center gap-1 shadow">
-                <span class="material-symbols-outlined text-sm">auto_awesome</span> Generate Draft
+                <span class="material-symbols-outlined text-sm">send</span> Send
               </button>
             </div>
 
@@ -906,6 +921,20 @@
                   <div>
                     <span class="text-outline block">DURATION</span>
                     <span id="res-ai-duration" class="text-primary font-bold">one week</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-[10px] font-bold text-outline uppercase tracking-wider mb-1">Reporter Details</label>
+                <div class="grid grid-cols-2 gap-2 bg-surface p-2.5 rounded border border-outline-variant font-mono text-[10px] leading-relaxed">
+                  <div>
+                    <span class="text-outline block">NAME</span>
+                    <span id="res-ai-reporter-name" class="text-primary font-bold">-</span>
+                  </div>
+                  <div>
+                    <span class="text-outline block">CONTACT</span>
+                    <span id="res-ai-reporter-contact" class="text-primary font-bold">-</span>
                   </div>
                 </div>
               </div>
