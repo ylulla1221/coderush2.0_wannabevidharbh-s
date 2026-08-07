@@ -185,6 +185,30 @@ class DuplicateResult(BaseModel):
         description="Highest adjusted similarity score.",
     )
 
+    confidence: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Explainable confidence score.",
+    )
+
+    confidence_percentage: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=100.0,
+        description="Confidence percentage (0-100).",
+    )
+
+    confidence_level: str | None = Field(
+        default=None,
+        description='Confidence level: "Very High", "High", "Medium", or "Low".',
+    )
+
+    review_required: bool | None = Field(
+        default=None,
+        description="Whether human review is required.",
+    )
+
     reason: list[str] = Field(
         default_factory=list,
         description="Human-readable reasons for the classification.",

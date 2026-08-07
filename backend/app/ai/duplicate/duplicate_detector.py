@@ -174,6 +174,53 @@ def _adjust_similarity(
 
 
 # =============================================================================
+# PRIVATE — CONFIDENCE SCORING
+# =============================================================================
+
+
+def calculate_duplicate_confidence(
+    semantic_similarity: float,
+    category_match: float,
+    location_similarity: float,
+) -> tuple[float, float, str, bool]:
+    """Calculate an explainable confidence score for duplicate detection.
+
+    Confidence = 0.70 × SemanticSimilarity + 0.15 × CategoryMatch + 0.15 × LocationSimilarity
+
+    Args:
+        semantic_similarity: Base similarity score (0.0 to 1.0).
+        category_match: 1.0 if categories match, 0.0 otherwise.
+        location_similarity: 1.0 if exact match, 0.5 if nearby, 0.0 otherwise.
+
+    Returns:
+        A tuple of (confidence, confidence_percentage, confidence_level, review_required).
+    """
+    semantic_similarity = max(0.0, min(1.0, semantic_similarity))
+    category_match = max(0.0, min(1.0, category_match))
+    location_similarity = max(0.0, min(1.0, location_similarity))
+
+    confidence = (0.70 * semantic_similarity) + (0.15 * category_match) + (0.15 * location_similarity)
+    confidence = max(0.0, min(1.0, confidence))
+
+    confidence_percentage = round(confidence * 100.0, 1)
+
+    if confidence >= 0.95:
+        level = "Very High"
+        review_required = False
+    elif confidence >= 0.90:
+        level = "High"
+        review_required = False
+    elif confidence >= 0.80:
+        level = "Medium"
+        review_required = True
+    else:
+        level = "Low"
+        review_required = True
+
+    return round(confidence, 3), confidence_percentage, level, review_required
+
+
+# =============================================================================
 # PRIVATE — CLASSIFICATION
 # =============================================================================
 
@@ -271,6 +318,10 @@ def _find_best_match(
     for result in search_results:
         payload = result.get("payload", {})
         raw_score = result.get("score", 0.0)
+        raw_score = max(0.0, min(float(raw_score), 1.0))
+        print("=" * 50)
+        print("Qdrant Returned Score:", result.get("score"))
+        print("Raw Score:", raw_score)
 
         adjusted_score, reasons = _adjust_similarity(
             raw_score=raw_score,
@@ -279,6 +330,8 @@ def _find_best_match(
             matched_category=payload.get("category"),
             matched_location=payload.get("location"),
         )
+        print("Adjusted Score:", adjusted_score)
+        print("=" * 50)
 
         candidate = DuplicateMatch(
             complaint_id=payload.get("complaint_id", ""),
@@ -355,6 +408,10 @@ def _build_fallback_result(reason: str) -> DuplicateResult:
         matched_complaint_id=None,
         cluster_size=1,
         similarity_score=0.0,
+        confidence=None,
+        confidence_percentage=None,
+        confidence_level=None,
+        review_required=None,
         reason=[reason],
     )
 
@@ -504,6 +561,19 @@ def find_duplicate_complaint(
                 cluster_id,
             )
 
+            cat_match = 1.0 if (
+                _normalise_text(complaint_data.get("category")) == _normalise_text(best_match.category)
+                and _normalise_text(complaint_data.get("category")) != ""
+            ) else 0.0
+
+            loc_sim = 1.0 if _locations_match(complaint_data.get("location"), best_match.location) else 0.0
+
+            conf, conf_pct, conf_level, rev_req = calculate_duplicate_confidence(
+                semantic_similarity=best_match.raw_score,
+                category_match=cat_match,
+                location_similarity=loc_sim
+            )
+
             result = DuplicateResult(
                 is_duplicate=is_duplicate,
                 duplicate_type=duplicate_type,
@@ -511,6 +581,10 @@ def find_duplicate_complaint(
                 matched_complaint_id=best_match.complaint_id,
                 cluster_size=cluster_size,
                 similarity_score=round(best_match.adjusted_score, 4),
+                confidence=conf,
+                confidence_percentage=conf_pct,
+                confidence_level=conf_level,
+                review_required=rev_req,
                 reason=best_match.reasons,
             )
 
@@ -541,6 +615,10 @@ def find_duplicate_complaint(
                     if best_match is not None
                     else 0.0
                 ),
+                confidence=None,
+                confidence_percentage=None,
+                confidence_level=None,
+                review_required=None,
                 reason=reason_parts,
             )
 
