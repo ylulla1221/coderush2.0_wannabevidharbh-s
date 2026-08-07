@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <title>CivicPulse - Pune Issues Tracker</title>
+  <title>CivicPulse - Nagpur Issues Tracker</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -42,6 +42,7 @@
     }
     #map {
       height: 500px;
+      width: 100%;
       z-index: 1;
     }
     /* Custom Leaflet Popup Styling */
@@ -64,7 +65,7 @@
       <span class="material-symbols-outlined text-secondary text-3xl font-bold">map</span>
       <div>
         <h1 class="text-xl font-bold tracking-tight">CivicPulse</h1>
-        <p class="text-[10px] text-gray-400">Pune Municipal Redressal Map</p>
+        <p class="text-[10px] text-gray-400">Nagpur Municipal Redressal Map</p>
       </div>
     </div>
     <a href="/index.html" class="flex items-center gap-1.5 text-xs text-secondary font-semibold hover:underline">
@@ -163,8 +164,8 @@
   </div>
 
   <script>
-    // Config
-    const PUNE_CENTER = [18.5204, 73.8567];
+    // Config - Nagpur, Maharashtra, India
+    const NAGPUR_CENTER = [21.1458, 79.0882];
     let map, clickMarker;
     let existingMarkers = [];
 
@@ -189,14 +190,16 @@
       }, 3000);
     }
 
-    // Initialize Map
+    // Initialize Map - centered on Nagpur at zoom level 12
     function initMap() {
       map = L.map('map', {
         zoomControl: true,
-        attributionControl: false
-      }).setView(PUNE_CENTER, 13);
+        attributionControl: true
+      }).setView(NAGPUR_CENTER, 12);
 
+      // OpenStreetMap tile layer with proper attribution
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(map);
 
@@ -332,7 +335,7 @@
       );
     }
 
-    // Fetch and plot reported issues
+    // Fetch and plot reported issues from GET /api/issues
     async function loadExistingIssues() {
       try {
         const res = await fetch('/api/issues');
@@ -342,7 +345,7 @@
         existingMarkers.forEach(m => m.remove());
         existingMarkers = [];
 
-        // Plot markers
+        // Plot a marker for each issue
         issues.forEach(issue => {
           const customIcon = L.icon({
             iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-teal.png',
@@ -353,22 +356,29 @@
             shadowSize: [41, 41]
           });
 
-          // Extract coordinates from MongoDB GeoJSON structure
-          const lat = issue.location && issue.location.coordinates ? issue.location.coordinates[1] : issue.latitude;
-          const lng = issue.location && issue.location.coordinates ? issue.location.coordinates[0] : issue.longitude;
+          // Read flat lat/lng returned by the API (server normalizes from GeoJSON)
+          const lat = issue.latitude;
+          const lng = issue.longitude;
 
-          if (lat !== undefined && lng !== undefined) {
+          if (lat !== undefined && lng !== undefined && !isNaN(lat) && !isNaN(lng)) {
             const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
             
+            // Popup with full complaint details
+            const statusColor = issue.status === 'RESOLVED' ? '#16a34a' : issue.status === 'IN_INVESTIGATION' || issue.status === 'DISPATCHED' ? '#d97706' : '#dc2626';
             const popupContent = `
-              <div class="p-1 space-y-1 text-xs">
-                <strong class="text-primary font-bold text-sm block">${issue.title || issue.category || 'Issue'}</strong>
-                <p class="text-gray-600 leading-relaxed">${issue.description}</p>
-                <span class="text-[9px] text-gray-400 block font-mono mt-1">Coords: ${lat.toFixed(4)}, ${lng.toFixed(4)}</span>
+              <div style="min-width:180px; padding:4px; font-family:'Inter',sans-serif; font-size:12px; line-height:1.5;">
+                <strong style="font-size:13px; color:#001334; display:block; margin-bottom:4px;">${issue.title || issue.category || 'Civic Issue'}</strong>
+                <span style="display:inline-block; background:#f0fdf4; color:#166534; border-radius:4px; padding:1px 6px; font-size:10px; font-weight:600; margin-bottom:6px;">${issue.category || 'General'}</span>
+                <p style="color:#4b5563; margin-bottom:4px;">${issue.description || 'No description provided.'}</p>
+                ${issue.landmark ? `<p style="color:#6b7280; font-size:10px;">📍 ${issue.landmark}</p>` : ''}
+                <p style="margin-top:4px;">
+                  <span style="display:inline-block; background:${statusColor}22; color:${statusColor}; border-radius:4px; padding:1px 6px; font-size:10px; font-weight:700;">${issue.status || 'PENDING'}</span>
+                </p>
+                <p style="color:#9ca3af; font-size:9px; margin-top:4px; font-family:monospace;">Coords: ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
               </div>
             `;
             
-            marker.bindPopup(popupContent);
+            marker.bindPopup(popupContent, { maxWidth: 240 });
             existingMarkers.push(marker);
           }
         });
@@ -417,11 +427,11 @@
             clickMarker = null;
           }
 
-          // Immediately plot on map without page reload (using GeoJSON coords if returned, else flat coordinates)
-          const lat = issue.location && issue.location.coordinates ? issue.location.coordinates[1] : (issue.latitude || latitude);
-          const lng = issue.location && issue.location.coordinates ? issue.location.coordinates[0] : (issue.longitude || longitude);
+          // Immediately plot the new marker on the map
+          const lat = issue.latitude || latitude;
+          const lng = issue.longitude || longitude;
 
-          if (lat !== undefined && lng !== undefined) {
+          if (!isNaN(lat) && !isNaN(lng)) {
             const customIcon = L.icon({
               iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-teal.png',
               shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -431,14 +441,18 @@
               shadowSize: [41, 41]
             });
             const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+            const statusColor = '#dc2626';
             const popupContent = `
-              <div class="p-1 space-y-1 text-xs">
-                <strong class="text-primary font-bold text-sm block">${issue.title || 'Issue'}</strong>
-                <p class="text-gray-600 leading-relaxed">${issue.description}</p>
-                <span class="text-[9px] text-gray-400 block font-mono mt-1">Coords: ${lat.toFixed(4)}, ${lng.toFixed(4)}</span>
+              <div style="min-width:180px; padding:4px; font-family:'Inter',sans-serif; font-size:12px; line-height:1.5;">
+                <strong style="font-size:13px; color:#001334; display:block; margin-bottom:4px;">${issue.category || 'Civic Issue'}</strong>
+                <p style="color:#4b5563; margin-bottom:4px;">${issue.description || ''}</p>
+                <p style="margin-top:4px;">
+                  <span style="display:inline-block; background:${statusColor}22; color:${statusColor}; border-radius:4px; padding:1px 6px; font-size:10px; font-weight:700;">${issue.status || 'PENDING'}</span>
+                </p>
+                <p style="color:#9ca3af; font-size:9px; margin-top:4px; font-family:monospace;">Coords: ${lat.toFixed(4)}, ${lng.toFixed(4)}</p>
               </div>
             `;
-            marker.bindPopup(popupContent);
+            marker.bindPopup(popupContent, { maxWidth: 240 });
             existingMarkers.push(marker);
           }
         } else {
