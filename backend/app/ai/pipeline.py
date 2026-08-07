@@ -13,15 +13,9 @@ from typing import Any, Dict
 
 from .duplicate import find_duplicate_complaint
 from .llm import extract_complaint_information
+from .priority import calculate_priority
 
 logger = logging.getLogger("civicflow.ai.pipeline")
-
-
-def _stub_priority_scoring(complaint_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Stub for Priority Engine."""
-    urgency = complaint_data.get("urgency", "Medium")
-    score = 90 if urgency == "Critical" else 75 if urgency == "High" else 50
-    return {"priority_score": score, "priority_level": urgency}
 
 
 def _stub_department_routing(complaint_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -77,7 +71,10 @@ def process_complaint(
     # Stage 3: Priority Scoring
     # ---------------------------------------------------------
     logger.info("Stage 3: Priority Scoring")
-    priority_result = _stub_priority_scoring(llm_result)
+    priority_result = calculate_priority(
+        complaint_data=llm_result,
+        duplicate_data=duplicate_result,
+    )
     
     # ---------------------------------------------------------
     # Stage 4: Department Routing
