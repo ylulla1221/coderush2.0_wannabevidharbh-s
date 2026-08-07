@@ -4,8 +4,7 @@
   "description": "CivicPulse Municipal Redressal Hub with real SQL database integration and distributed frontend components",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "init-db": "node init_db.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.19.2",

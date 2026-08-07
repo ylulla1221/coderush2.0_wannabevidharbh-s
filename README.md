@@ -3,7 +3,9 @@
 This guide provides instructions on how to install, set up, and run the CivicPulse Municipal Redressal Hub locally.
 
 ## Prerequisites
-Before running the application, make sure you have **Node.js** (v16 or higher) installed on your system.
+Before running the application, make sure you have:
+- **Node.js** (v16 or higher) installed on your system.
+- **MongoDB** running locally on port `27017` or configured via remote URI.
 
 ## Setup and Running Steps
 
@@ -13,23 +15,20 @@ If you are running the project for the first time or after pulling new changes, 
 npm install
 ```
 
-### 2. Initialize the Database (Optional)
-The project comes pre-seeded with a database `civicpulse.db`. If you ever need to reset or reinitialize the database with default schema and seed data, run:
-```bash
-npm run init-db
-```
+### 2. Configure Environment (Optional)
+By default, the application connects to a local MongoDB instance at `mongodb://localhost:27017/civicpulse`. To point to a custom instance, set the `MONGODB_URI` environment variable.
 
 ### 3. Start the Server
 To start the backend server, run:
 ```bash
 npm start
 ```
-*Note: Do not run `npm run dev` as there is no development/dev script configured in this project.*
+The database will automatically seed with default resident, operator, and field crew profiles on the first run.
 
 ### 4. Access the Application
-Once the server is running, open your web browser and navigate to:
-* **http://localhost:3000/login.html** - To login / sign up.
-* **http://localhost:3000** - Main application interface (requires logging in).
+Once the server is running, navigate to:
+* **http://localhost:3000/login.html** - Login/Registration page.
+* **http://localhost:3000** - Resident Portal & Operations Desk.
 
 ## Available Scripts
 
@@ -37,5 +36,4 @@ In the project directory, you can run:
 
 | Command | Action |
 |---|---|
-| `npm start` | Runs the server using `server.js` |
-| `npm run init-db` | Runs `init_db.js` to reinitialize the SQLite database |
+| `npm start` | Launches the server and connects to MongoDB |
