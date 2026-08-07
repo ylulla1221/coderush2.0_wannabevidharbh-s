@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>CivicPulse - Civic Redressal & Operations Hub</title>
+  
+  <!-- Tailwind CSS with Forms and Container Queries plugins -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  
+  <!-- Custom CSS stylesheet -->
+  <link rel="stylesheet" href="/css/style.css"/>
+  
+  <!-- Leaflet Map CSS and JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  
+  <!-- Chart.js for Analytics Dashboard -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Tailwind Custom Config according to DESIGN.md -->
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            primary: "#001334",
+            secondary: "#006a61",
+            background: "#fbf8fa",
+            surface: "#fbf8fa",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-low": "#f5f3f4",
+            "surface-container": "#f0edef",
+            "surface-container-high": "#eae7e9",
+            "surface-container-highest": "#e4e2e3",
+            "on-surface-variant": "#45474c",
+            "on-surface": "#1b1b1d",
+            "outline-variant": "#c5c6cd",
+            error: "#ba1a1a",
+            "error-container": "#ffdad6",
+            "on-error-container": "#93000a",
+            "primary-container": "#00265b",
+            "on-primary-container": "#5c8eee"
+          },
+          borderRadius: {
+            DEFAULT: "0.125rem",
+            lg: "0.25rem",     // 4px - Standard input, button
+            xl: "0.5rem",      // 8px - Dashboard cards, maps
+            full: "9999px"     // Status chips
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-background text-on-background min-h-screen antialiased flex flex-col">
+
+  <!-- ==================== RESIDENT PORTAL TOP NAVIGATION HEADER ==================== -->
+  <header id="resident-header" class="hidden bg-white text-primary border-b border-outline-variant sticky top-0 z-40 w-full shadow-sm">
+    <div class="max-w-7xl mx-auto px-6 py-3 flex justify-between items-center h-16">
+      <!-- Logo -->
+      <div class="flex items-center gap-2 cursor-pointer active:opacity-90" onclick="switchResidentTab('dashboard')">
+        <span class="material-symbols-outlined text-secondary text-3xl font-semibold">shield_heart</span>
+        <span class="font-sans text-xl font-bold tracking-tight text-primary">CivicPulse</span>
+      </div>
+      <!-- Middle Nav links -->
+      <div class="flex gap-8 items-center h-16">
+        <button id="res-nav-dashboard" onclick="switchResidentTab('dashboard')" class="text-secondary font-bold text-sm h-full px-1 border-b-2 border-secondary flex items-center">Dashboard</button>
+        <button id="res-nav-complaints" onclick="switchResidentTab('complaints')" class="text-on-surface-variant hover:text-primary font-medium text-sm h-full px-1 border-b-2 border-transparent flex items-center">Complaints</button>
+        <button id="res-nav-map" onclick="switchResidentTab('map')" class="text-on-surface-variant hover:text-primary font-medium text-sm h-full px-1 border-b-2 border-transparent flex items-center">Map View</button>
+        <button id="res-nav-analytics" onclick="switchResidentTab('analytics')" class="text-on-surface-variant hover:text-primary font-medium text-sm h-full px-1 border-b-2 border-transparent flex items-center">Analytics</button>
+      </div>
+      <!-- Right actions -->
+      <div class="flex items-center gap-4">
+        <button onclick="toggleNotifications(event)" class="relative p-1.5 rounded-full hover:bg-surface-container text-on-surface-variant">
+          <span class="material-symbols-outlined text-xl">notifications</span>
+          <span id="res-notif-badge" class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
+        </button>
+        <div class="relative">
+          <div onclick="toggleUserDropdown(event)" class="w-8 h-8 rounded-full bg-emerald-700 text-white flex items-center justify-center font-bold text-xs cursor-pointer shadow-sm" id="res-avatar">RE</div>
+          <!-- Resident Dropdown -->
+          <div id="res-user-dropdown" onclick="event.stopPropagation()" class="hidden absolute right-0 mt-2 w-48 bg-white border border-outline-variant rounded-lg shadow-lg z-50 p-2 text-xs">
+            <div class="p-2 border-b border-outline-variant font-bold text-primary" id="res-dropdown-username">Resident</div>
+            <button onclick="logoutSession()" class="w-full text-left p-2 hover:bg-surface-container-low text-error font-medium flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">logout</span> Sign Out</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== OFFICER PORTAL LEFT SIDEBAR ==================== -->
+  <aside id="officer-sidebar" class="sidebar p-5 flex flex-col justify-between">
+    <div class="space-y-6">
+      <!-- Logo -->
+      <div class="flex items-center gap-2 cursor-pointer active:opacity-90" onclick="switchTab('dashboard')">
+        <span class="material-symbols-outlined text-secondary text-3xl font-semibold">shield_heart</span>
+        <span class="font-sans text-xl font-bold tracking-tight text-primary">CivicPulse</span>
+      </div>
+
+      <!-- Officer Portal Badge Card -->
+      <div class="flex items-center gap-3 p-3 bg-surface-container rounded-xl border border-outline-variant">
+        <div class="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-sm shadow-sm" id="sidebar-avatar">
+          OP
+        </div>
+        <div>
+          <h4 class="font-bold text-xs text-primary" id="sidebar-user-name">Officer Portal</h4>
+          <p class="text-[10px] text-on-surface-variant font-medium">Municipal Division</p>
+        </div>
+      </div>
+
+      <!-- Sidebar Menu Navigation -->
+      <nav class="flex flex-col gap-1.5" id="sidebar-menu">
+        <button id="btn-tab-dashboard" onclick="switchTab('dashboard')" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg text-primary bg-surface-container-low border-l-4 border-secondary transition-all">
+          <span class="material-symbols-outlined text-xl">dashboard</span> Overview
+        </button>
+        <button id="btn-tab-active-tasks" onclick="switchTab('active-tasks')" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-all">
+          <span class="material-symbols-outlined text-xl">playlist_add_check</span> Active Tasks
+        </button>
+        <button id="btn-tab-duplicates" onclick="switchTab('duplicates')" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-all">
+          <span class="material-symbols-outlined text-xl">filter_none</span> Duplicates
+        </button>
+        <button id="btn-tab-map" onclick="switchTab('map')" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-all">
+          <span class="material-symbols-outlined text-xl">map</span> Map View
+        </button>
+        <button id="btn-tab-simulations" onclick="switchTab('simulations')" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-all">
+          <span class="material-symbols-outlined text-xl">science</span> Simulation
+        </button>
+        <button id="btn-tab-analytics" onclick="switchTab('analytics')" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-all">
+          <span class="material-symbols-outlined text-xl">query_stats</span> Reports
+        </button>
+        <button id="btn-tab-sql-explorer" onclick="switchTab('sql-explorer')" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-all">
+          <span class="material-symbols-outlined text-xl text-blue-500">database</span> SQL Console
+        </button>
+      </nav>
+
+      <!-- Action Button -->
+      <button onclick="openIntakeModal()" class="w-full bg-[#0d9488] hover:bg-[#0b7a70] text-white text-xs font-semibold py-2.5 rounded-lg transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow-sm mt-4">
+        <span class="material-symbols-outlined text-sm font-bold">add</span> New Entry
+      </button>
+    </div>
+
+    <!-- Bottom Controls -->
+    <div class="space-y-2 border-t border-outline-variant pt-4">
+      <button onclick="openSettingsModal()" class="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-on-surface-variant hover:text-primary hover:bg-surface-container-low rounded-lg transition-all">
+        <span class="material-symbols-outlined text-xl">settings</span> Settings
+      </button>
+      <button onclick="togglePrivacyMasking()" id="privacy-mask-btn" class="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-on-surface-variant hover:text-primary hover:bg-surface-container-low rounded-lg transition-all">
+        <span class="material-symbols-outlined text-xl" id="privacy-mask-icon">visibility_off</span> Privacy Mask
+      </button>
+      <button onclick="logoutSession()" class="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-800 rounded-lg transition-all">
+        <span class="material-symbols-outlined text-xl">logout</span> Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- ==================== MAIN CONTENT AREA ==================== -->
+  <main class="content-area flex-grow flex flex-col" id="main-content">
+    
+    <!-- Top Nav Action Bar (Sticky Helper for Officer Portal) -->
+    <div class="flex justify-end items-center gap-3 mb-6" id="top-nav-bar">
+      <div id="engine-status-badge" class="hidden items-center gap-1 bg-emerald-50 text-emerald-700 text-xs px-2.5 py-1 rounded-full border border-emerald-300 font-medium">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Engine Ready
+      </div>
+      <button onclick="toggleNotifications(event)" class="relative p-1.5 rounded-full hover:bg-surface-container text-on-surface-variant">
+        <span class="material-symbols-outlined text-xl">notifications</span>
+        <span id="notif-badge" class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
+      </button>
+      <div class="relative">
+        <img onclick="toggleUserDropdown(event)" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD515AtUq2E1m4mcI6b5VyCh-W7zz6lC79mIUq-mDkFburR79roClHrt_1d-RlYbBYwOynOCRGpp0UulXyi8PFxw_QmnkLT5YNQNpf8qt437pNyfOu4H2MJ8SXCAGcSoV5eVA1h6eAYFtGSbJAneSnDUCYoyAFmnu67qdTDfxo5MhDDCTTLiZsHS32zP0nXyRmnc0XiRjkVEyJPNhCy4_bIvrIQvU8g3u0IMntaW7KUmJApDh6VUzFs" alt="Profile" class="w-8 h-8 rounded-full border border-outline-variant cursor-pointer object-cover hover:border-secondary transition-all"/>
+        <div id="user-dropdown" onclick="event.stopPropagation()" class="hidden absolute right-0 mt-2 w-48 bg-white border border-outline-variant rounded-lg shadow-lg z-50 p-2 text-xs">
+          <div class="p-2 border-b border-outline-variant font-bold text-primary" id="dropdown-username">Er. S. Deshmukh</div>
+          <button onclick="logoutSession()" class="w-full text-left p-2 hover:bg-surface-container-low text-error font-medium flex items-center gap-1.5"><span class="material-symbols-outlined text-sm">logout</span> Sign Out</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Dropdown overlay -->
+    <div id="notif-dropdown" onclick="event.stopPropagation()" class="hidden absolute right-16 top-16 w-80 bg-white border border-outline-variant rounded-xl shadow-lg z-50 p-3">
+      <h4 class="font-bold text-xs text-primary border-b border-outline-variant pb-2 mb-2">Notifications</h4>
+      <div id="notif-list" class="space-y-2 max-h-60 overflow-y-auto text-xs text-on-surface-variant"></div>
+    </div>
+
+    <!-- ==================== OFFICER TAB: OVERVIEW (NEEDS REVIEW QUEUE) ==================== -->
+    <div id="tab-dashboard" class="tab-content space-y-6">
+      <div>
+        <h1 class="font-sans text-3xl font-bold tracking-tight text-primary">Needs Review Queue</h1>
+        <p class="font-sans text-sm text-on-surface-variant">Manage and assign incoming civic complaints.</p>
+      </div>
+      <!-- Overview Top Metrics Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm space-y-1">
+          <span class="text-xs text-on-surface-variant uppercase font-semibold tracking-wider">Total Active</span>
+          <div class="text-3xl font-bold text-primary font-mono" id="stat-total-active">124</div>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm space-y-1">
+          <span class="text-xs text-on-surface-variant uppercase font-semibold tracking-wider">Urgent Queue</span>
+          <div class="text-3xl font-bold text-error font-mono" id="stat-urgent-queue">12</div>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm space-y-1">
+          <span class="text-xs text-on-surface-variant uppercase font-semibold tracking-wider">Avg Resolution</span>
+          <div class="text-3xl font-bold text-primary font-mono">4.2d</div>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm space-y-1">
+          <span class="text-xs text-on-surface-variant uppercase font-semibold tracking-wider">Officer Availability</span>
+          <div class="text-3xl font-bold text-primary font-mono" id="stat-availability">82%</div>
+        </div>
+      </div>
+      <!-- Main Layout Split -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <!-- Left Feed -->
+        <div class="lg:col-span-8 bg-white p-6 rounded-xl border border-outline-variant shadow-sm space-y-4">
+          <div class="flex justify-between items-center border-b border-outline-variant pb-3">
+            <h3 class="font-sans text-sm font-bold text-primary uppercase tracking-wider">Incoming Complaints</h3>
+            <button onclick="openFilterModal()" class="flex items-center gap-1 text-xs border border-outline-variant px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-container transition-all">
+              <span class="material-symbols-outlined text-sm">filter_list</span> Filter
+            </button>
+          </div>
+          <div id="incoming-complaints-list" class="space-y-4"></div>
+          <button onclick="switchTab('active-tasks')" class="w-full text-center py-2 text-xs font-semibold text-secondary hover:underline">
+            View All Active Complaints
+          </button>
+        </div>
+        <!-- Right Widgets -->
+        <div class="lg:col-span-4 space-y-6">
+          <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm space-y-3">
+            <div class="flex justify-between items-center border-b border-outline-variant pb-2">
+              <h4 class="font-sans text-xs font-bold text-primary uppercase tracking-wider">Hotspot Activity</h4>
+              <span class="material-symbols-outlined text-on-surface-variant text-base cursor-pointer" onclick="switchTab('map')">open_in_full</span>
+            </div>
+            <div id="overview-mini-map" class="h-44 w-full bg-surface-container rounded-lg relative overflow-hidden"></div>
+          </div>
+          <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm space-y-3">
+            <h4 class="font-sans text-xs font-bold text-primary uppercase tracking-wider border-b border-outline-variant pb-2">Resource Simulation</h4>
+            <p class="text-[11px] text-on-surface-variant leading-relaxed">Predictive model for upcoming shift resource needs based on current queue volume.</p>
+            <div class="space-y-3 pt-2 text-xs">
+              <div>
+                <div class="flex justify-between mb-1 font-semibold text-primary">
+                  <span>Patrol Units</span>
+                  <span class="text-error" id="bar-label-patrol">High Need</span>
+                </div>
+                <div class="w-full bg-surface-container rounded-full h-2">
+                  <div class="bg-error h-2 rounded-full" style="width: 85%" id="bar-fill-patrol"></div>
+                </div>
+              </div>
+              <div>
+                <div class="flex justify-between mb-1 font-semibold text-primary">
+                  <span>Maintenance Crews</span>
+                  <span class="text-amber-500" id="bar-label-maintenance">Moderate</span>
+                </div>
+                <div class="w-full bg-surface-container rounded-full h-2">
+                  <div class="bg-amber-500 h-2 rounded-full" style="width: 50%" id="bar-fill-maintenance"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== OFFICER TAB: ACTIVE TASKS ==================== -->
+    <div id="tab-active-tasks" class="tab-content hidden space-y-6">
+      <div>
+        <h1 class="font-sans text-3xl font-bold tracking-tight text-primary">Active Operations Control</h1>
+        <p class="font-sans text-sm text-on-surface-variant">Field crew dispatching, SLA breach control, and technical validation.</p>
+      </div>
+      <div class="bg-white p-6 rounded-xl border border-outline-variant shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-outline-variant pb-3">
+          <h3 class="font-sans text-sm font-bold text-primary uppercase tracking-wider">Field Dispatch Work Order Queue</h3>
+          <div class="flex items-center gap-2">
+            <select id="active-tasks-filter" onchange="renderWorkOrdersTable()" class="py-1 px-3 border border-outline-variant rounded-lg text-xs bg-surface text-on-surface focus:border-secondary focus:ring-1 focus:ring-secondary">
+              <option value="">All Departments</option>
+              <option value="Water Supply">Water Supply</option>
+              <option value="Pothole / Road Repair">Road Repair</option>
+              <option value="Streetlight Outage">Electrical Services</option>
+            </select>
+            <button onclick="bulkCrewDispatch()" class="bg-primary hover:bg-slate-800 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-all">
+              Bulk Dispatch
+            </button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-surface border-b border-outline-variant text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider">
+                <th class="p-3 w-10 text-center"><input type="checkbox" id="select-all-workorders" onclick="toggleSelectAllWorkorders(this)" class="rounded text-secondary focus:ring-secondary"/></th>
+                <th class="p-3">Ticket ID</th>
+                <th class="p-3">Category &amp; Location</th>
+                <th class="p-3">Priority</th>
+                <th class="p-3">Assigned Crew / Manager</th>
+                <th class="p-3 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody id="work-orders-table-body" class="divide-y divide-outline-variant text-xs"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== OFFICER TAB: DUPLICATES ==================== -->
+    <div id="tab-duplicates" class="tab-content hidden space-y-6">
+      <div>
+        <h1 class="font-sans text-3xl font-bold tracking-tight text-primary">Spatial Deduplication &amp; Clustering</h1>
+        <p class="font-sans text-sm text-on-surface-variant">Review automatic clustering of complaints based on coordinate proximity and semantic text vector scores.</p>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div class="lg:col-span-8 bg-white p-6 rounded-xl border border-outline-variant shadow-sm space-y-4">
+          <h3 class="font-sans text-sm font-bold text-primary uppercase tracking-wider border-b border-outline-variant pb-2">Active Spatial Centroid Clusters</h3>
+          <div id="duplicates-cluster-list" class="space-y-4"></div>
+        </div>
+        <div class="lg:col-span-4 bg-white p-5 rounded-xl border border-outline-variant shadow-sm space-y-3">
+          <h4 class="font-sans text-xs font-bold text-primary uppercase tracking-wider border-b border-outline-variant pb-2">Clustering Settings</h4>
+          <div class="space-y-4 text-xs">
+            <div>
+              <label class="block text-[11px] font-semibold text-primary mb-1">Spatial Proximity Radius</label>
+              <input type="text" value="50 Meters" disabled class="w-full p-2 bg-surface-container border border-outline-variant rounded text-on-surface-variant cursor-not-allowed"/>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-primary mb-1">Semantic Similarity Threshold (Cosine Score)</label>
+              <input type="text" value="0.82" disabled class="w-full p-2 bg-surface-container border border-outline-variant rounded text-on-surface-variant cursor-not-allowed"/>
+            </div>
+            <div class="bg-surface-container-low p-3 rounded-lg border border-outline-variant leading-relaxed text-[11px]">
+              <strong>How it works:</strong> Complaints within 50m with similarity &gt; 0.82 are automatically grouped. Centroids with &gt;= 8 entries auto-escalate to URGENT priority.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== OFFICER TAB: MAP VIEW (6 GRID MAP) ==================== -->
+    <div id="tab-map" class="tab-content hidden h-[calc(100vh-10rem)] min-h-[500px] flex flex-col space-y-4">
+      <div class="flex justify-between items-center">
+        <div>
+          <h1 class="font-sans text-3xl font-bold tracking-tight text-primary">City-Wide Incidents Map</h1>
+          <p class="font-sans text-sm text-on-surface-variant">Geographic distribution of active redressal requests.</p>
+        </div>
+        <div class="flex bg-surface-container p-1 rounded-lg border border-outline-variant text-xs font-semibold">
+          <button onclick="filterMapCategories('All')" id="btn-map-cat-All" class="px-3 py-1.5 bg-white text-primary rounded-md shadow-sm border border-outline-variant/10">All Categories</button>
+          <button onclick="filterMapCategories('Infrastructure')" id="btn-map-cat-Infrastructure" class="px-3 py-1.5 text-on-surface-variant hover:text-primary">Infrastructure</button>
+          <button onclick="filterMapCategories('Sanitation')" id="btn-map-cat-Sanitation" class="px-3 py-1.5 text-on-surface-variant hover:text-primary">Sanitation</button>
+        </div>
+      </div>
+      <div class="flex-grow grid grid-cols-1 md:grid-cols-3 gap-4" id="map-grid-container">
+        <div class="bg-white p-3 rounded-xl border border-outline-variant shadow-sm flex flex-col h-full relative">
+          <span class="text-[11px] font-bold text-primary mb-1 block uppercase">Downtown Sector</span>
+          <div id="grid-map-1" class="flex-grow w-full bg-surface-container rounded-lg border border-outline-variant"></div>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-outline-variant shadow-sm flex flex-col h-full relative">
+          <span class="text-[11px] font-bold text-primary mb-1 block uppercase">Westside Subsector</span>
+          <div id="grid-map-2" class="flex-grow w-full bg-surface-container rounded-lg border border-outline-variant"></div>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-outline-variant shadow-sm flex flex-col h-full relative">
+          <span class="text-[11px] font-bold text-primary mb-1 block uppercase">North Hills Sector</span>
+          <div id="grid-map-3" class="flex-grow w-full bg-surface-container rounded-lg border border-outline-variant"></div>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-outline-variant shadow-sm flex flex-col h-full relative">
+          <span class="text-[11px] font-bold text-primary mb-1 block uppercase">South End Sector</span>
+          <div id="grid-map-4" class="flex-grow w-full bg-surface-container rounded-lg border border-outline-variant"></div>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-outline-variant shadow-sm flex flex-col h-full relative">
+          <span class="text-[11px] font-bold text-primary mb-1 block uppercase">Ward 12 Central</span>
+          <div id="grid-map-5" class="flex-grow w-full bg-surface-container rounded-lg border border-outline-variant"></div>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-outline-variant shadow-sm flex flex-col h-full relative">
+          <span class="text-[11px] font-bold text-primary mb-1 block uppercase">Industrial Corridor</span>
+          <div id="grid-map-6" class="flex-grow w-full bg-surface-container rounded-lg border border-outline-variant"></div>
+        </div>
+      </div>
+      <div class="bg-white p-3.5 rounded-xl border border-outline-variant shadow-sm flex gap-6 text-xs justify-between items-center">
+        <div class="flex items-center gap-4">
+          <span class="font-bold text-primary uppercase text-[10px]">Priority Legend:</span>
+          <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-error"></span> Urgent (24h)</span>
+          <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-amber-500"></span> Moderate (48h)</span>
+          <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> Low (7 Days)</span>
+        </div>
+        <button onclick="toggleMapLayout()" class="text-xs font-semibold text-secondary hover:underline flex items-center gap-1">
+          <span class="material-symbols-outlined text-sm">aspect_ratio</span> Toggle Full Screen Map
+        </button>
+      </div>
+    </div>
+
+    <!-- ==================== OFFICER TAB: SIMULATIONS (SIMULATION ENVIRONMENT) ==================== -->
+    <div id="tab-simulations" class="tab-content hidden space-y-6">
+      <div>
+        <h1 class="font-sans text-3xl font-bold tracking-tight text-primary">Simulation Environment</h1>
+        <p class="font-sans text-sm text-on-surface-variant">Model 'What-If' scenarios and forecast operational impact.</p>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div class="lg:col-span-4 bg-white p-6 rounded-xl border border-outline-variant shadow-sm space-y-6">
+          <h3 class="font-sans text-sm font-bold text-primary uppercase tracking-wider border-b border-outline-variant pb-2 flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-secondary text-base">tune</span> Scenario Parameters
+          </h3>
+          <div class="space-y-4 text-xs">
+            <div class="space-y-3">
+              <span class="block text-[10px] font-bold text-outline uppercase tracking-wider">Infrastructure Events</span>
+              <div>
+                <div class="flex justify-between mb-1">
+                  <span class="font-semibold text-primary">Main Artery Closure</span>
+                  <span class="font-mono font-bold text-primary" id="val-artery-closure">100%</span>
+                </div>
+                <input type="range" min="0" max="100" value="100" id="slider-artery-closure" oninput="updateSimulationSliders()" class="w-full accent-secondary"/>
+                <span class="text-[10px] text-on-surface-variant mt-1 block">Impact on Highway 42</span>
+              </div>
+              <div>
+                <div class="flex justify-between mb-1">
+                  <span class="font-semibold text-primary">Bridge Capacity</span>
+                  <span class="font-mono font-bold text-primary" id="val-bridge-capacity">40%</span>
+                </div>
+                <input type="range" min="0" max="100" value="40" id="slider-bridge-capacity" oninput="updateSimulationSliders()" class="w-full accent-secondary"/>
+              </div>
+            </div>
+            <div class="space-y-3 pt-2 border-t border-outline-variant">
+              <span class="block text-[10px] font-bold text-outline uppercase tracking-wider">Resource Allocation</span>
+              <div>
+                <div class="flex justify-between mb-1">
+                  <span class="font-semibold text-primary">Response Units Available</span>
+                  <span class="font-mono font-bold text-primary" id="val-units-available">12</span>
+                </div>
+                <input type="range" min="1" max="50" value="12" id="slider-units-available" oninput="updateSimulationSliders()" class="w-full accent-secondary"/>
+              </div>
+              <div>
+                <label class="block font-semibold text-primary mb-1">Emergency Routing</label>
+                <select id="sim-routing-type" class="w-full p-2 border border-outline-variant rounded bg-surface text-on-surface text-xs focus:border-secondary focus:ring-1 focus:ring-secondary">
+                  <option value="Aggressive Re-routing">Aggressive Re-routing</option>
+                  <option value="Standard Routing">Standard Routing</option>
+                  <option value="Congestion Avoidance">Congestion Avoidance</option>
+                </select>
+              </div>
+            </div>
+            <div class="pt-4 flex flex-col gap-2">
+              <button onclick="runSimulationEngine()" class="w-full bg-[#001334] text-white text-xs font-bold py-2.5 rounded-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-1 shadow-sm active:scale-95">
+                <span class="material-symbols-outlined text-base">play_arrow</span> Run Simulation
+              </button>
+              <button onclick="resetSimulationParameters()" class="w-full border border-primary text-primary bg-white text-xs font-bold py-2.5 rounded-lg hover:bg-surface-container-low transition-all active:scale-95">
+                Reset Defaults
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="lg:col-span-8 space-y-6">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-white p-4 rounded-xl border border-outline-variant shadow-sm space-y-1">
+              <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">Avg Response Time</span>
+              <div class="flex items-baseline gap-2">
+                <span class="text-2xl font-bold text-primary font-mono" id="sim-metric-time">14.2 mins</span>
+                <span class="text-[9px] font-semibold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded" id="sim-badge-time">↑ +3.4m</span>
+              </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-outline-variant shadow-sm space-y-1">
+              <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">Gridlock Probability</span>
+              <div class="flex items-baseline gap-2">
+                <span class="text-2xl font-bold text-primary font-mono" id="sim-metric-gridlock">68%</span>
+                <span class="text-[10px] text-amber-600 font-semibold" id="sim-msg-gridlock">Critical Sector 4/5</span>
+              </div>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-outline-variant shadow-sm space-y-1">
+              <span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block">Resource Depletion</span>
+              <div class="flex items-baseline gap-2">
+                <span class="text-2xl font-bold text-primary font-mono" id="sim-metric-depletion">42%</span>
+                <span class="text-[9px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded" id="sim-badge-depletion">Stable</span>
+              </div>
+            </div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-outline-variant shadow-sm flex flex-col h-[400px] relative">
+            <div class="absolute top-8 left-8 z-[1000] bg-white border border-outline-variant p-3 rounded-lg shadow-md text-xs space-y-2">
+              <span class="font-bold text-primary uppercase text-[9px] tracking-wider block border-b border-outline-variant pb-1">Heatmap Overlay</span>
+              <div class="flex flex-col gap-1.5 text-on-surface-variant">
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="radio" name="heatmap-type" value="density" checked onclick="toggleSimulationHeatmap('density')" class="text-secondary focus:ring-secondary"/>
+                  Traffic Density
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="radio" name="heatmap-type" value="range" onclick="toggleSimulationHeatmap('range')" class="text-secondary focus:ring-secondary"/>
+                  Response Range
+                </label>
+              </div>
+            </div>
+            <div id="simulation-map" class="flex-grow w-full bg-surface-container rounded-lg border border-outline-variant"></div>
+            <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-[1000] w-[80%] max-w-sm bg-white/90 backdrop-blur border border-outline-variant rounded-full shadow-lg p-2.5 flex items-center justify-between gap-3 text-xs">
+              <button onclick="toggleSimulationPlay()" id="btn-sim-play" class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center hover:bg-slate-800 transition-all">
+                <span class="material-symbols-outlined text-lg" id="icon-sim-play">play_arrow</span>
+              </button>
+              <input type="range" min="0" max="12" value="0" id="sim-time-slider" oninput="onSimulationTimelineSlide()" class="flex-grow accent-secondary"/>
+              <span class="font-mono font-bold text-primary pr-3" id="sim-timeline-val">+0 hrs</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== OFFICER TAB: REPORTS ==================== -->
+    <div id="tab-analytics" class="tab-content hidden space-y-6">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 class="font-sans text-3xl font-bold tracking-tight text-primary">Analytics &amp; Reports</h1>
+          <p class="font-sans text-sm text-on-surface-variant">Incident trends and SLA performance diagnostics.</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm space-y-1">
+          <span class="text-xs text-on-surface-variant uppercase font-semibold tracking-wider">Total Complaints</span>
+          <div class="flex items-baseline gap-2">
+            <span class="text-3xl font-bold text-primary font-mono" id="rep-stat-total">1,284</span>
+            <span class="text-[9px] font-semibold text-blue-600 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded">↑ 12%</span>
+          </div>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm space-y-1">
+          <span class="text-xs text-on-surface-variant uppercase font-semibold tracking-wider">Avg Resolution Time</span>
+          <div class="flex items-baseline gap-2">
+            <span class="text-3xl font-bold text-primary font-mono">48 hrs</span>
+            <span class="text-[9px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">↓ 4hrs</span>
+          </div>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm space-y-1">
+          <span class="text-xs text-on-surface-variant uppercase font-semibold tracking-wider">SLA Compliance</span>
+          <div class="flex items-baseline gap-2">
+            <span class="text-3xl font-bold text-primary font-mono" id="rep-stat-compliance">92%</span>
+            <span class="text-[9px] font-semibold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">↓ 2%</span>
+          </div>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm space-y-2">
+          <span class="text-xs text-on-surface-variant uppercase font-semibold tracking-wider block">Open Critical</span>
+          <div class="flex items-baseline gap-2">
+            <span class="text-3xl font-bold text-error font-mono" id="rep-stat-critical">34</span>
+          </div>
+          <div class="w-full bg-surface-container rounded-full h-1">
+            <div class="bg-error h-1 rounded-full" style="width: 65%"></div>
+          </div>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div class="lg:col-span-8 bg-white p-6 rounded-xl border border-outline-variant shadow-sm space-y-3">
+          <div class="flex justify-between items-center border-b border-outline-variant pb-2">
+            <h4 class="font-sans text-xs font-bold text-primary uppercase tracking-wider">Resolution Time Trends</h4>
+            <span class="text-[10px] text-on-surface-variant font-mono bg-surface px-2 py-0.5 rounded border border-outline-variant">Last 30 Days</span>
+          </div>
+          <div class="h-64 w-full"><canvas id="resolutionTrendsChart"></canvas></div>
+        </div>
+        <div class="lg:col-span-4 bg-white p-6 rounded-xl border border-outline-variant shadow-sm space-y-4">
+          <h4 class="font-sans text-xs font-bold text-primary uppercase tracking-wider border-b border-outline-variant pb-2">Top Neighborhoods</h4>
+          <div class="space-y-4 text-xs pt-1">
+            <div>
+              <div class="flex justify-between mb-1 font-semibold text-primary"><span>Downtown</span><span class="font-mono font-bold text-primary">342</span></div>
+              <div class="w-full bg-surface-container rounded-full h-1.5"><div class="bg-secondary h-1.5 rounded-full" style="width: 90%"></div></div>
+            </div>
+            <div>
+              <div class="flex justify-between mb-1 font-semibold text-primary"><span>Westside</span><span class="font-mono font-bold text-primary">215</span></div>
+              <div class="w-full bg-surface-container rounded-full h-1.5"><div class="bg-secondary h-1.5 rounded-full" style="width: 60%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-8 bg-white p-5 rounded-xl border border-outline-variant shadow-sm flex flex-col h-[320px]">
+          <h4 class="font-sans text-xs font-bold text-primary uppercase tracking-wider mb-2">SLA Performance Map</h4>
+          <div id="reports-sla-map" class="flex-grow w-full bg-surface-container rounded-lg border border-outline-variant"></div>
+        </div>
+        <div class="lg:col-span-4 bg-white p-5 rounded-xl border border-outline-variant shadow-sm space-y-3">
+          <h4 class="font-sans text-xs font-bold text-primary uppercase tracking-wider border-b border-outline-variant pb-1">System Alerts</h4>
+          <div class="space-y-3 pt-1 text-xs">
+            <div class="flex gap-2.5 p-3 bg-red-50 border border-red-200 rounded-lg text-red-950">
+              <span class="material-symbols-outlined text-red-600 text-lg">warning</span>
+              <div><strong class="block text-[11px] font-bold">Spike in Pothole Reports</strong><p class="text-[10px] leading-relaxed mt-0.5 text-red-900">District 4 showing 300% increase in last 48hrs.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== OFFICER TAB: SQL CONSOLE ==================== -->
+    <div id="tab-sql-explorer" class="tab-content hidden space-y-6">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 class="font-sans text-3xl font-bold tracking-tight text-primary flex items-center gap-2">
+            <span class="material-symbols-outlined text-blue-500 text-3xl">database</span> SQL Console
+          </h1>
+        </div>
+        <button onclick="downloadSQLDatabaseDump()" class="bg-secondary hover:bg-[#00524b] text-white text-xs font-bold px-4 py-2 rounded-lg transition-all flex items-center gap-1.5 shadow-sm">
+          <span class="material-symbols-outlined text-base">download</span> Download SQL Dump
+        </button>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div class="lg:col-span-7 space-y-4">
+          <div class="bg-[#111516] rounded-xl border border-outline-variant shadow-lg overflow-hidden flex flex-col">
+            <div class="bg-[#26292b] px-4 py-2 border-b border-outline-variant flex justify-between items-center text-xs text-on-tertiary-container">
+              <div class="flex items-center gap-2"><span class="font-mono text-white font-semibold ml-2">SQL Console Editor</span></div>
+              <button onclick="clearSQLEditor()" class="text-on-tertiary-container hover:text-white font-mono flex items-center gap-0.5">Clear</button>
+            </div>
+            <div class="p-4 bg-[#111516] space-y-3">
+              <textarea id="sql-query-input" rows="6" class="w-full bg-[#1b1b1d] text-emerald-400 font-mono text-xs p-3 rounded border border-outline-variant focus:outline-none focus:border-secondary"></textarea>
+              <div class="flex justify-between items-center text-[10px]">
+                <span class="text-outline font-mono">Engine: Real Live SQLite Database</span>
+                <button onclick="executeCustomSQLQuery()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-mono text-xs font-bold px-4 py-2 rounded transition-all active:scale-95">Run SQL Query</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="lg:col-span-5 bg-white p-5 rounded-xl border border-outline-variant shadow-sm flex flex-col h-[400px]">
+          <div class="flex justify-between items-center border-b border-outline-variant pb-2 mb-3">
+            <h4 class="font-sans text-xs font-bold text-primary uppercase tracking-wider">Tabular Results</h4>
+            <span class="text-[10px] text-on-surface-variant bg-surface px-2 py-0.5 rounded border border-outline-variant" id="sql-result-status">Awaiting query...</span>
+          </div>
+          <div class="flex-grow overflow-auto text-xs" id="sql-query-results-container"></div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ==================================================================== -->
+    <!-- ==================== RESIDENT PORTAL VIEWS/TABS ==================== -->
+    <!-- ==================================================================== -->
+
+    <!-- ==================== RESIDENT TAB: DASHBOARD ==================== -->
+    <div id="tab-res-dashboard" class="tab-content hidden space-y-6">
+      <div class="flex justify-between items-center">
+        <div>
+          <h1 class="font-sans text-3xl font-bold tracking-tight text-primary">Welcome Back, Citizen</h1>
+          <p class="font-sans text-sm text-on-surface-variant">Here is the latest status on your civic reports and community impact.</p>
+        </div>
+        <button onclick="switchResidentTab('complaints')" class="bg-[#0d9488] hover:bg-[#0b7a70] text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all active:scale-95 flex items-center gap-1">
+          <span class="material-symbols-outlined text-sm font-bold">add</span> Report Issue
+        </button>
+      </div>
+
+      <!-- Metrics Row -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Active complaints -->
+        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm flex items-center gap-4">
+          <div class="p-3 bg-emerald-50 text-emerald-700 rounded-lg">
+            <span class="material-symbols-outlined text-2xl">pending_actions</span>
+          </div>
+          <div>
+            <span class="text-xs text-on-surface-variant font-semibold block uppercase">Active Complaints</span>
+            <span class="text-2xl font-bold text-primary font-mono block">3</span>
+            <span class="text-[10px] text-outline block">2 under review, 1 scheduled</span>
+          </div>
+        </div>
+        <!-- Resolved issues -->
+        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm flex items-center gap-4">
+          <div class="p-3 bg-emerald-50 text-emerald-700 rounded-lg">
+            <span class="material-symbols-outlined text-2xl">check_circle</span>
+          </div>
+          <div>
+            <span class="text-xs text-on-surface-variant font-semibold block uppercase">Resolved Issues</span>
+            <span class="text-2xl font-bold text-primary font-mono block">12</span>
+            <span class="text-[10px] text-outline block">In the last 12 months</span>
+          </div>
+        </div>
+        <!-- Community rank -->
+        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm flex items-center gap-4">
+          <div class="p-3 bg-blue-50 text-[#006a61] rounded-lg">
+            <span class="material-symbols-outlined text-2xl">grade</span>
+          </div>
+          <div>
+            <span class="text-xs text-on-surface-variant font-semibold block uppercase">Community Rank</span>
+            <span class="text-2xl font-bold text-primary font-mono block">Top 5%</span>
+            <span class="text-[10px] text-outline block">Highly active contributor</span>
+          </div>
+        </div>
+        <!-- Recent report location map widget -->
+        <div class="bg-white p-4 rounded-xl border border-outline-variant shadow-sm flex justify-between items-center">
+          <div>
+            <span class="text-[10px] text-on-surface-variant font-bold block uppercase">Recent Report Location</span>
+            <button onclick="switchResidentTab('map')" class="text-secondary font-bold text-xs hover:underline mt-1 block">View Map</button>
+          </div>
+          <div id="res-mini-map" class="w-16 h-16 bg-surface-container rounded-lg border border-outline-variant overflow-hidden"></div>
+        </div>
+      </div>
+
+      <!-- Action Timeline Feed -->
+      <div class="bg-white p-6 rounded-xl border border-outline-variant shadow-sm">
+        <div class="flex justify-between items-center border-b border-outline-variant pb-3 mb-6">
+          <h3 class="font-sans text-sm font-bold text-primary uppercase tracking-wider">Action Timeline</h3>
+          <button onclick="switchResidentTab('complaints')" class="text-xs font-semibold text-secondary hover:underline">View All</button>
+        </div>
+
+        <div class="relative pl-8 border-l border-outline-variant space-y-8 ml-3" id="res-action-timeline">
+          <!-- Timeline Item 1 -->
+          <div class="relative">
+            <span class="absolute -left-[41px] top-0.5 bg-secondary text-white w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow">
+              <span class="material-symbols-outlined text-xs">engineering</span>
+            </span>
+            <div class="bg-surface-container-low p-4 rounded-xl border border-outline-variant max-w-2xl space-y-1">
+              <div class="flex justify-between items-center text-[10px]">
+                <span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded uppercase">Moderate</span>
+                <span class="text-outline font-mono">Today, 09:45 AM</span>
+              </div>
+              <h4 class="font-sans font-bold text-sm text-primary">Pothole Repair Scheduled</h4>
+              <p class="text-xs text-on-surface-variant">Assigned to Crew Beta. Estimated completion by EOD.</p>
+              <div class="text-[10px] text-outline flex items-center gap-3 pt-1">
+                <span>📍 1240 Main St, District 4</span>
+                <span>Ref ID: <span class="font-mono pii-masked">CP-8921</span></span>
+              </div>
+            </div>
+          </div>
+          <!-- Timeline Item 2 -->
+          <div class="relative">
+            <span class="absolute -left-[41px] top-0.5 bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow">
+              <span class="material-symbols-outlined text-xs">visibility</span>
+            </span>
+            <div class="bg-surface-container-low p-4 rounded-xl border border-outline-variant max-w-2xl space-y-1">
+              <div class="flex justify-between items-center text-[10px]">
+                <span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded uppercase">Low</span>
+                <span class="text-outline font-mono">Yesterday, 14:30 PM</span>
+              </div>
+              <h4 class="font-sans font-bold text-sm text-primary">Inspection Completed</h4>
+              <p class="text-xs text-on-surface-variant">Streetlight outage verified by field agent. Parts ordered.</p>
+              <div class="text-[10px] text-outline flex items-center gap-3 pt-1">
+                <span>📍 89 Park Ave, District 2</span>
+                <span>Ref ID: <span class="font-mono pii-masked">CP-4731</span></span>
+              </div>
+            </div>
+          </div>
+          <!-- Timeline Item 3 -->
+          <div class="relative">
+            <span class="absolute -left-[41px] top-0.5 bg-slate-400 text-white w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow">
+              <span class="material-symbols-outlined text-xs">mail</span>
+            </span>
+            <div class="bg-surface-container-low p-4 rounded-xl border border-outline-variant max-w-2xl space-y-1">
+              <div class="flex justify-between items-center text-[10px]">
+                <span class="bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded uppercase">Urgent</span>
+                <span class="text-outline font-mono">Oct 12, 08:00 AM</span>
+              </div>
+              <h4 class="font-sans font-bold text-sm text-primary">Report Submitted</h4>
+              <p class="text-xs text-on-surface-variant">Water main leak reported. Awaiting initial triage.</p>
+              <div class="text-[10px] text-outline flex items-center gap-3 pt-1">
+                <span>📍 400 Elm St, District 1</span>
+                <span>Ref ID: <span class="font-mono pii-masked">CR-9901</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== RESIDENT TAB: COMPLAINTS ==================== -->
+    <div id="tab-res-complaints" class="tab-content hidden space-y-6">
+      <div class="flex justify-between items-center">
+        <div>
+          <h1 class="font-sans text-3xl font-bold tracking-tight text-primary">File a Redressal Request</h1>
+          <p class="font-sans text-sm text-on-surface-variant">Report issues directly to municipal departments using standard inputs or our AI assistant.</p>
+        </div>
+        
+        <!-- Toggle: Standard Form vs AI Smart Generator -->
+        <div class="flex bg-surface-container p-1 rounded-lg border border-outline-variant text-xs font-semibold">
+          <button onclick="toggleResidentIntakeMode('standard')" id="btn-res-intake-standard" class="px-4 py-2 bg-white text-primary rounded-md shadow-sm border border-outline-variant/10">Standard Form</button>
+          <button onclick="toggleResidentIntakeMode('ai')" id="btn-res-intake-ai" class="px-4 py-2 text-on-surface-variant hover:text-primary">AI Smart Generator</button>
+        </div>
+      </div>
+
+      <!-- RESIDENT FORM 1: Standard Intake Card (Screenshot 3) -->
+      <div id="res-intake-standard-card" class="bg-white p-6 rounded-xl border border-outline-variant shadow-sm max-w-3xl mx-auto space-y-6">
+        
+        <form onsubmit="submitResidentComplaint(event)" class="space-y-6 text-xs">
+          <!-- Issue Details Section -->
+          <div class="space-y-4">
+            <h3 class="text-sm font-bold text-primary flex items-center gap-2 border-b border-outline-variant pb-2">
+              <span class="material-symbols-outlined text-secondary text-base">assignment</span>
+              Issue Details
+            </h3>
+            
+            <div>
+              <label class="block font-semibold text-primary mb-1">Issue Category <span class="text-error">*</span></label>
+              <select id="res-form-category" required class="w-full p-2.5 border border-outline-variant rounded bg-surface text-xs focus:ring-1 focus:ring-secondary focus:border-primary">
+                <option value="" disabled selected>Select a category</option>
+                <option value="Water Supply">Water Supply</option>
+                <option value="Pothole / Road Repair">Road Repair / Pothole</option>
+                <option value="Streetlight Outage">Streetlight Outage</option>
+                <option value="Sanitation & Waste">Sanitation &amp; Waste Management</option>
+                <option value="Graffiti">Graffiti Removal</option>
+                <option value="Illegal Dumping">Illegal Dumping</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-semibold text-primary mb-1">Description <span class="text-error">*</span></label>
+              <textarea id="res-form-description" rows="4" required placeholder="Please provide specific details about the issue..." maxlength="500" class="w-full p-2.5 border border-outline-variant rounded bg-surface text-xs focus:ring-1 focus:ring-secondary focus:border-primary"></textarea>
+              <span class="text-[10px] text-outline mt-1 block">Maximum 500 characters.</span>
+            </div>
+          </div>
+
+          <!-- Location Section -->
+          <div class="space-y-4">
+            <h3 class="text-sm font-bold text-primary flex items-center gap-2 border-b border-outline-variant pb-2">
+              <span class="material-symbols-outlined text-secondary text-base">pin_drop</span>
+              Location
+            </h3>
+            
+            <div>
+              <label class="block font-semibold text-primary mb-1">Address or Cross Street <span class="text-error">*</span></label>
+              <div class="relative">
+                <span class="material-symbols-outlined absolute left-3 top-2.5 text-outline text-base">search</span>
+                <input type="text" id="res-form-address" required placeholder="Enter location..." class="w-full pl-9 pr-3 py-2.5 border border-outline-variant rounded bg-surface text-xs focus:ring-1 focus:ring-secondary focus:border-primary"/>
+              </div>
+            </div>
+
+            <!-- Location Map with current location overlay button -->
+            <div class="h-44 w-full bg-surface-container rounded-lg border border-outline-variant relative overflow-hidden">
+              <div id="res-intake-map" class="w-full h-full"></div>
+              <button type="button" onclick="useCitizenCurrentLocation()" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-[1000] bg-white border border-outline-variant shadow-lg px-4 py-2 rounded-full text-xs font-semibold text-primary hover:bg-surface-container-low transition-all active:scale-95 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-sm">my_location</span> Use current location
+              </button>
+            </div>
+          </div>
+
+          <!-- Media Upload Section -->
+          <div class="space-y-4">
+            <h3 class="text-sm font-bold text-primary flex items-center gap-2 border-b border-outline-variant pb-2">
+              <span class="material-symbols-outlined text-secondary text-base">photo_camera</span>
+              Media Upload (Optional)
+            </h3>
+            
+            <div class="border-2 border-dashed border-outline-variant rounded-xl p-8 text-center bg-surface hover:bg-surface-container-low transition-all cursor-pointer relative" id="res-media-dropzone">
+              <input type="file" id="res-form-media" class="hidden" accept="image/*,video/*" onchange="previewCitizenMedia(this)"/>
+              <div class="flex flex-col items-center gap-2 text-on-surface-variant" onclick="document.getElementById('res-form-media').click()">
+                <span class="material-symbols-outlined text-3xl">upload_file</span>
+                <strong class="text-xs font-semibold block text-primary" id="media-upload-label">Click to upload or drag and drop</strong>
+                <span class="text-[10px] text-outline">SVG, PNG, JPG or MP4 (max. 10MB)</span>
+              </div>
+              <div id="media-preview-container" class="hidden mt-4 justify-center">
+                <img id="media-preview-img" class="w-32 h-20 object-cover rounded border border-outline-variant"/>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex justify-end gap-3 pt-4 border-t border-outline-variant">
+            <button type="button" onclick="switchResidentTab('dashboard')" class="px-5 py-2 border border-outline-variant hover:bg-surface-container text-primary font-semibold rounded-lg transition-all active:scale-95">Cancel</button>
+            <button type="submit" class="px-5 py-2 bg-secondary hover:bg-[#00524b] text-white font-bold rounded-lg transition-all active:scale-95 flex items-center gap-1.5">
+              Submit Report <span class="material-symbols-outlined text-sm">send</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- RESIDENT FORM 2: AI Smart Generator (Screenshot 2) -->
+      <div id="res-intake-ai-card" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Left: Describe issue & map (8 Cols) -->
+        <div class="lg:col-span-8 space-y-4">
+          <div class="bg-white p-6 rounded-xl border border-outline-variant shadow-sm space-y-4">
+            <div class="flex justify-between items-center">
+              <h3 class="font-sans font-bold text-sm text-primary uppercase tracking-wider">Describe your issue</h3>
+              <span class="material-symbols-outlined text-outline cursor-pointer hover:text-primary" onclick="toggleVoiceRecordingSimulation()">mic</span>
+            </div>
+            
+            <div class="relative">
+              <textarea id="res-ai-chat-input" rows="5" placeholder="E.g., There's a massive pothole on Main St right in front of the old library. It's been there for a week and getting worse. I hit it yesterday and nearly popped a tire..." class="w-full p-3 border border-outline-variant rounded-lg bg-surface text-xs focus:ring-1 focus:ring-secondary focus:border-primary"></textarea>
+              <button onclick="generateResidentAIDraft()" class="absolute bottom-3 right-3 bg-secondary hover:bg-[#00524b] text-white text-xs font-bold px-4 py-2 rounded-lg transition-all active:scale-95 flex items-center gap-1 shadow">
+                <span class="material-symbols-outlined text-sm">auto_awesome</span> Generate Draft
+              </button>
+            </div>
+
+            <!-- Waves animation indicator -->
+            <div id="res-ai-wave-container" class="hidden justify-center items-center gap-1 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 font-mono text-[10px]">
+              <span class="w-1.5 h-3 bg-red-600 animate-bounce"></span>
+              <span class="w-1.5 h-4 bg-red-600 animate-bounce delay-75"></span>
+              <span class="w-1.5 h-2 bg-red-600 animate-bounce delay-150"></span>
+              <span class="ml-1" id="res-ai-timer-label">Recording: 0:00</span>
+            </div>
+          </div>
+
+          <!-- Location Selector Map -->
+          <div class="bg-white p-4 rounded-xl border border-outline-variant shadow-sm h-64 flex flex-col">
+            <span class="text-[10px] font-bold text-primary mb-1 uppercase">Location selector</span>
+            <div id="res-ai-intake-map" class="flex-grow w-full bg-surface-container rounded-lg border border-outline-variant"></div>
+          </div>
+        </div>
+
+        <!-- Right: AI Draft Review results card (4 Cols) -->
+        <div class="lg:col-span-4 bg-white p-5 rounded-xl border border-outline-variant shadow-sm space-y-4">
+          <h4 class="font-sans text-xs font-bold text-primary uppercase tracking-wider border-b border-outline-variant pb-2 flex items-center justify-between">
+            <span>AI Draft Review</span>
+            <span class="bg-secondary-container text-on-secondary-container text-[9px] px-1.5 py-0.2 rounded font-mono font-bold uppercase">LLM Coprocessor</span>
+          </h4>
+
+          <div class="space-y-4 text-xs" id="res-ai-draft-card-body">
+            <!-- Loading/Awaiting placeholder -->
+            <div class="py-12 text-center text-outline italic space-y-2 flex flex-col items-center justify-center" id="res-ai-awaiting-view">
+              <span class="material-symbols-outlined text-3xl">psychology</span>
+              <span>Awaiting Description<br/><span class="text-[10px] font-normal leading-relaxed text-on-surface-variant block mt-1">Type or speak your issue on the left. The AI will structure the data here for your final review.</span></span>
+            </div>
+
+            <!-- Structured parsed card content -->
+            <div id="res-ai-draft-content" class="hidden space-y-4">
+              <div>
+                <label class="block text-[10px] font-bold text-outline uppercase tracking-wider mb-1">Suggested Category</label>
+                <div class="flex items-center justify-between p-2 bg-surface rounded border border-outline-variant">
+                  <span id="res-ai-suggested-cat" class="font-semibold text-primary">Road Maintenance</span>
+                  <span class="material-symbols-outlined text-outline text-sm cursor-pointer hover:text-primary">edit</span>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-[10px] font-bold text-outline uppercase tracking-wider mb-1">Estimated Priority</label>
+                <span class="inline-block px-2.5 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 rounded-full font-bold uppercase text-[9px]" id="res-ai-suggested-pri">Moderate</span>
+              </div>
+
+              <div>
+                <label class="block text-[10px] font-bold text-outline uppercase tracking-wider mb-1">Extracted Details</label>
+                <div class="grid grid-cols-2 gap-2 bg-surface p-2.5 rounded border border-outline-variant font-mono text-[10px] leading-relaxed">
+                  <div>
+                    <span class="text-outline block">LANDMARK</span>
+                    <span id="res-ai-landmark" class="text-primary font-bold">Old Library</span>
+                  </div>
+                  <div>
+                    <span class="text-outline block">DURATION</span>
+                    <span id="res-ai-duration" class="text-primary font-bold">one week</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-[10px] font-bold text-outline uppercase tracking-wider mb-1">Formal Description</label>
+                <p id="res-ai-formal-desc" class="p-3 bg-surface rounded border border-outline-variant font-sans leading-relaxed text-[11px] text-on-surface-variant"></p>
+              </div>
+
+              <div class="border-t border-outline-variant pt-3 flex justify-between items-center text-[10px]">
+                <span class="text-outline flex items-center gap-0.5 font-semibold"><span class="material-symbols-outlined text-xs">verified_user</span> Reporter ID (Auto-Linked)</span>
+                <span class="material-symbols-outlined text-outline text-base cursor-pointer hover:text-primary">visibility</span>
+              </div>
+
+              <button onclick="submitResidentAIDraft()" class="w-full bg-[#0d9488] hover:bg-[#0b7a70] text-white font-bold py-2 rounded-lg transition-all active:scale-95 shadow">
+                Submit Report (SQL INSERT)
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ==================== RESIDENT TAB: MAP VIEW ==================== -->
+    <div id="tab-res-map" class="tab-content hidden h-[calc(100vh-10rem)] min-h-[500px] flex flex-col space-y-4">
+      <div class="flex justify-between items-center">
+        <div>
+          <h1 class="font-sans text-3xl font-bold tracking-tight text-primary">Incidents Map</h1>
+          <p class="font-sans text-sm text-on-surface-variant">View reports in your neighborhood.</p>
+        </div>
+      </div>
+
+      <!-- Map split -->
+      <div class="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-4">
+        
+        <!-- Left: Map Container with Neighborhood Filters Overlay (8 Cols) -->
+        <div class="lg:col-span-8 bg-white p-3 rounded-xl border border-outline-variant shadow-sm relative flex flex-col h-full">
+          
+          <!-- Neighborhood Filters floating card (Screenshot 4) -->
+          <div class="absolute top-8 left-8 z-[1000] bg-white/95 backdrop-blur border border-outline-variant p-4 rounded-xl shadow-lg text-xs space-y-3 w-56">
+            <span class="font-bold text-primary uppercase text-[10px] tracking-wider block border-b border-outline-variant pb-1">Neighborhood Filters</span>
+            
+            <!-- Toggles -->
+            <div class="space-y-2">
+              <div class="flex justify-between items-center">
+                <span class="font-semibold text-on-surface-variant">My Reports</span>
+                <input type="checkbox" id="res-filter-my-reports" checked onchange="filterResidentMap()" class="rounded text-secondary focus:ring-secondary"/>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="font-semibold text-on-surface-variant">Neighborhood Issues</span>
+                <input type="checkbox" id="res-filter-local-issues" checked onchange="filterResidentMap()" class="rounded text-secondary focus:ring-secondary"/>
+              </div>
+            </div>
+
+            <!-- Issue Type Filters grid -->
+            <div class="pt-2 border-t border-outline-variant space-y-1">
+              <span class="block text-[9px] font-bold text-outline uppercase tracking-wider mb-1.5">Issue Types</span>
+              <div class="grid grid-cols-2 gap-1.5 font-bold text-[9px]">
+                <button onclick="toggleMapTypeFilter('potholes')" id="btn-filter-potholes" class="p-1.5 bg-secondary text-white rounded border border-secondary flex items-center justify-center gap-1"><span class="material-symbols-outlined text-xs">construction</span> Potholes</button>
+                <button onclick="toggleMapTypeFilter('lighting')" id="btn-filter-lighting" class="p-1.5 bg-secondary text-white rounded border border-secondary flex items-center justify-center gap-1"><span class="material-symbols-outlined text-xs">lightbulb</span> Lighting</button>
+                <button onclick="toggleMapTypeFilter('water')" id="btn-filter-water" class="p-1.5 bg-secondary text-white rounded border border-secondary flex items-center justify-center gap-1"><span class="material-symbols-outlined text-xs">water_drop</span> Water</button>
+                <button onclick="toggleMapTypeFilter('sanitation')" id="btn-filter-sanitation" class="p-1.5 bg-secondary text-white rounded border border-secondary flex items-center justify-center gap-1"><span class="material-symbols-outlined text-xs">delete</span> Sanitation</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Leaflet Map -->
+          <div id="res-portal-map" class="flex-grow w-full rounded-lg border border-outline-variant"></div>
+        </div>
+
+        <!-- Right: Nearby Issues list (4 Cols) -->
+        <div class="lg:col-span-4 bg-white p-5 rounded-xl border border-outline-variant shadow-sm flex flex-col h-full">
+          <h3 class="font-sans text-xs font-bold text-primary uppercase tracking-wider border-b border-outline-variant pb-2 mb-3">Nearby Issues</h3>
+          
+          <div class="flex-grow overflow-y-auto space-y-3" id="res-nearby-issues-list">
+            <!-- Complaint Feed Cards populated dynamically -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ==================== RESIDENT TAB: ANALYTICS ==================== -->
+    <div id="tab-res-analytics" class="tab-content hidden space-y-6">
+      <div>
+        <h1 class="font-sans text-3xl font-bold tracking-tight text-primary">Your Community Impact</h1>
+        <p class="font-sans text-sm text-on-surface-variant">View statistics on complaints resolved and status trends in your neighborhood.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white p-6 rounded-xl border border-outline-variant shadow-sm space-y-3">
+          <h4 class="font-sans text-xs font-bold text-primary uppercase tracking-wider mb-2">Neighborhood Issue Categories</h4>
+          <div class="h-64"><canvas id="resAnalyticsCategoriesChart"></canvas></div>
+        </div>
+        <div class="bg-white p-6 rounded-xl border border-outline-variant shadow-sm space-y-3">
+          <h4 class="font-sans text-xs font-bold text-primary uppercase tracking-wider mb-2">Resolution Status Ratio</h4>
+          <div class="h-64"><canvas id="resAnalyticsStatusChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ==================================================================== -->
+  <!-- ==================== DIALOG MODALS & OVERLAYS ==================== -->
+  <!-- ==================================================================== -->
+
+  <!-- ==================== MODAL: OFFICER NEW ENTRY ==================== -->
+  <div id="intake-modal" class="hidden fixed inset-0 z-[2000] overflow-y-auto bg-slate-900/60 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl border border-outline-variant w-full max-w-4xl max-h-[90vh] overflow-y-auto flex flex-col">
+      <div class="p-4 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
+        <h3 class="font-bold text-primary flex items-center gap-1.5"><span class="material-symbols-outlined text-secondary">edit_note</span> Citizen Complaint Intake Panel</h3>
+        <button onclick="closeIntakeModal()" class="text-outline hover:text-primary"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto">
+        <!-- Standard -->
+        <div class="space-y-4">
+          <h4 class="text-xs font-bold text-primary uppercase tracking-wider border-b border-outline-variant pb-1 flex items-center gap-1">Standard Intake Form</h4>
+          <form id="standard-intake-form" onsubmit="submitStandardComplaint(event)" class="space-y-3 text-xs">
+            <div>
+              <label class="block font-semibold text-primary mb-1">Category</label>
+              <select id="form-category" required class="w-full p-2 border border-outline-variant rounded bg-surface text-xs">
+                <option value="Water Supply">Water Supply</option>
+                <option value="Pothole / Road Repair">Road Repair</option>
+                <option value="Streetlight Outage">Streetlight Outage</option>
+                <option value="Sanitation & Waste">Sanitation &amp; Waste Management</option>
+                <option value="Graffiti">Graffiti</option>
+                <option value="Illegal Dumping">Illegal Dumping</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-semibold text-primary mb-1">Description</label>
+              <textarea id="form-description" rows="3" required placeholder="Describe the issue..." class="w-full p-2 border border-outline-variant rounded bg-surface text-xs"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div><label class="block font-semibold text-primary mb-1">Reporter Name</label><input type="text" id="form-reporter-name" class="w-full p-2 border border-outline-variant rounded bg-surface text-xs"/></div>
+              <div><label class="block font-semibold text-primary mb-1">Reporter Contact</label><input type="text" id="form-reporter-contact" class="w-full p-2 border border-outline-variant rounded bg-surface text-xs"/></div>
+            </div>
+            <div><label class="block font-semibold text-primary mb-1">Address Location</label><input type="text" id="form-address" required class="w-full p-2 border border-outline-variant rounded bg-surface text-xs"/></div>
+            <div class="grid grid-cols-2 gap-2">
+              <div><label class="block font-semibold text-primary mb-1">Latitude</label><input type="number" step="any" id="form-lat" value="41.8795" class="w-full p-2 border border-outline-variant rounded bg-surface text-xs"/></div>
+              <div><label class="block font-semibold text-primary mb-1">Longitude</label><input type="number" step="any" id="form-lng" value="-87.6255" class="w-full p-2 border border-outline-variant rounded bg-surface text-xs"/></div>
+            </div>
+            <button type="submit" class="w-full bg-[#0d9488] hover:bg-[#0b7a70] text-white font-bold py-2 rounded-lg transition-all active:scale-95 shadow">Submit Complaint (SQL INSERT)</button>
+          </form>
+        </div>
+        <!-- AI -->
+        <div class="space-y-4 border-t md:border-t-0 md:border-l border-outline-variant pt-4 md:pt-0 md:pl-6">
+          <h4 class="text-xs font-bold text-secondary uppercase tracking-wider border-b border-outline-variant pb-1 flex items-center justify-between"><span>AI Smart Generator</span></h4>
+          <div class="space-y-3 text-xs">
+            <div>
+              <label class="block font-semibold text-primary mb-1">Voice Dictation / Raw Text</label>
+              <div class="relative">
+                <textarea id="ai-chat-input" rows="3" placeholder="Speak or paste rough details..." class="w-full p-2 border border-outline-variant rounded bg-surface text-xs"></textarea>
+                <button onclick="toggleVoiceRecordingSimulation()" id="voice-record-btn" class="absolute bottom-2.5 right-2.5 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center hover:bg-slate-800 transition-all"><span class="material-symbols-outlined text-base" id="voice-record-icon">mic</span></button>
+              </div>
+              <div id="voice-wave-container" class="hidden justify-center items-center gap-1 p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 mt-2 font-mono text-[10px]">
+                <span class="w-1.5 h-3 bg-red-600 animate-bounce"></span><span class="w-1.5 h-4 bg-red-600 animate-bounce delay-75"></span><span class="ml-1" id="voice-timer-label">Recording: 0:00</span>
+              </div>
+            </div>
+            <div>
+              <button onclick="toggleSystemPromptEditor()" class="text-secondary font-semibold text-xs flex items-center gap-0.5 hover:underline">Configure Settings</button>
+              <div id="ai-prompt-editor" class="hidden space-y-2 mt-2 bg-surface p-3 rounded-lg border border-outline-variant">
+                <textarea id="ai-system-instructions" rows="2" class="w-full p-2 bg-white border border-outline-variant rounded text-[10px] font-mono">You are CivicPulse LLM Coprocessor.</textarea>
+              </div>
+            </div>
+            <button onclick="generateComplaintFromAI()" class="w-full bg-[#001334] text-white font-bold py-2 rounded-lg hover:bg-slate-800 transition-all">Parse &amp; Populate Form</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: COMPLAINT DETAILS / DRAWER ==================== -->
+  <div id="details-modal" class="hidden fixed inset-0 z-[2000] overflow-y-auto bg-slate-900/60 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl border border-outline-variant w-full max-w-lg overflow-hidden flex flex-col">
+      <div class="p-4 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
+        <div class="flex items-center gap-2">
+          <span class="font-mono text-xs font-bold bg-[#00265b] px-2 py-0.5 rounded text-[#5c8eee]" id="details-ticket-id">CR-9901</span>
+          <h3 class="font-bold text-primary" id="details-title-category">Complaint Details</h3>
+        </div>
+        <button onclick="closeDetailsModal()" class="text-outline hover:text-primary"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <div class="p-5 space-y-4 overflow-y-auto max-h-[70vh] text-xs">
+        <div class="bg-surface-container p-3.5 rounded-xl border border-outline-variant space-y-2" id="details-officer-assignment-box">
+          <div class="flex items-center gap-2">
+            <span class="font-semibold text-primary w-20">Set Status:</span>
+            <select id="details-status-select" onchange="onDetailsStatusChange()" class="flex-grow py-1 px-2 border border-outline-variant rounded text-xs bg-white text-on-surface">
+              <option value="Submitted">Submitted</option>
+              <option value="Assigned">Assigned</option>
+              <option value="In Investigation">In Investigation</option>
+              <option value="SLA Escalated">SLA Escalated</option>
+              <option value="Resolved">Resolved</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="font-semibold text-primary w-20">Assign Crew:</span>
+            <select id="details-crew-select" onchange="onDetailsCrewChange()" class="flex-grow py-1 px-2 border border-outline-variant rounded text-xs bg-white text-on-surface">
+              <option value="">Unassigned</option>
+              <option value="Ward 12 Water Repair Unit">Ward 12 Water Repair Unit</option>
+              <option value="District 3 Heavy Asphalt Rig">District 3 Heavy Asphalt Rig</option>
+              <option value="Ward 12 Electrical Repair Truck">Ward 12 Electrical Repair Truck</option>
+              <option value="Level 2 Manager (ASSISTANT_EXECUTIVE_ENGINEER)">Level 2 Manager</option>
+            </select>
+          </div>
+        </div>
+        <div class="space-y-1">
+          <span class="font-bold text-primary block uppercase text-[10px]">Description</span>
+          <p id="details-description" class="p-3 bg-surface-container-low border border-outline-variant rounded-lg font-sans text-on-surface whitespace-pre-wrap"></p>
+        </div>
+        <div class="grid grid-cols-2 gap-4 pt-1">
+          <div>
+            <span class="font-bold text-primary block uppercase text-[10px]">Reporter Details</span>
+            <p id="details-reporter" class="text-on-surface-variant leading-relaxed mt-0.5 pii-masked">Ramesh Kumar<br/>+91 98765 43210</p>
+          </div>
+          <div><span class="font-bold text-primary block uppercase text-[10px]">Date Filed</span><p id="details-date" class="text-on-surface-variant font-mono mt-0.5"></p></div>
+        </div>
+        <div>
+          <span class="font-bold text-primary block uppercase text-[10px]">Geographic Location</span>
+          <p id="details-address" class="text-on-surface-variant leading-relaxed mt-0.5"></p>
+          <div class="flex gap-4 text-[10px] text-outline font-mono mt-0.5">
+            <span id="details-coords">Coords: 41.8850, -87.6350</span><span id="details-confidence">Confidence: 0.55</span>
+          </div>
+        </div>
+        <div id="details-sla-box" class="hidden p-3.5 bg-red-100 border border-red-300 rounded-lg text-red-950 gap-2 items-start">
+          <span class="material-symbols-outlined text-red-600 text-lg">alarm_on</span>
+          <div class="flex-grow">
+            <strong class="block text-[11px] font-bold">SLA Breach Detected</strong>
+            <button onclick="triggerSLAOverride()" class="bg-red-700 hover:bg-red-800 text-white font-semibold text-[10px] px-3 py-1.5 rounded mt-2 transition-all">Execute Manual Override</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings modal -->
+  <div id="settings-modal" class="hidden fixed inset-0 z-[2000] overflow-y-auto bg-slate-900/60 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl border border-outline-variant w-full max-w-md overflow-hidden flex flex-col">
+      <div class="p-4 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
+        <h3 class="font-bold text-primary flex items-center gap-1"><span class="material-symbols-outlined text-secondary">settings</span> System Settings</h3>
+        <button onclick="closeSettingsModal()" class="text-outline hover:text-primary"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <div class="p-5 text-xs space-y-4">
+        <div>
+          <label class="block font-semibold text-primary mb-1">Select User Role Session</label>
+          <select id="settings-user-role" onchange="changeSessionUser()" class="w-full p-2 border border-outline-variant rounded bg-surface text-on-surface focus:border-secondary focus:ring-1 focus:ring-secondary">
+            <option value="MUNICIPAL_OFFICER">Municipal Operations Officer (Er. S. Deshmukh)</option>
+            <option value="OPERATOR">Municipal Admin Operator (operator_admin)</option>
+            <option value="RESIDENT">Resident (Ramesh Kumar)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Toast Notifications -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-[3000] flex flex-col gap-2"></div>
+
+  <!-- ==================== FRONTEND JS MODULE LOADERS ==================== -->
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/js/overview.js"></script>
+  <script src="/js/active_tasks.js"></script>
+  <script src="/js/duplicates.js"></script>
+  <script src="/js/map_view.js"></script>
+  <script src="/js/simulation.js"></script>
+  <script src="/js/reports.js"></script>
+  <script src="/js/sql_explorer.js"></script>
+  <script src="/js/intake.js"></script>
+  
+  <!-- Resident specific logic module -->
+  <script src="/js/resident.js"></script>
+
+</body>
+</html>
