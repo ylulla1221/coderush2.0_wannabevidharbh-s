@@ -10,9 +10,7 @@ CivicFlow AI pipeline:
 ```
 Complaint Text (+ optional Image)
         ↓
-YOLO Object Detection
-        ↓
-LLM Complaint Extraction   ← produces structured JSON
+Vision LLM Extraction   ← produces structured JSON
         ↓
 Duplicate Detection         ← THIS MODULE
         ↓
@@ -224,7 +222,6 @@ from app.ai.duplicate import find_duplicate_complaint
 # Stage 2: LLM extraction
 llm_result = extract_complaint_information(
     complaint_text=text,
-    yolo_detection=yolo_result,
     image_path=image,
 )
 

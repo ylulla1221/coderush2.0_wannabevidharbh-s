@@ -82,35 +82,6 @@ def test_code_mixed():
     print(f"Time: {elapsed:.2f} sec\n")
 
 
-def test_with_yolo():
-    complaint = "Road is damaged near the bus stop."
-
-    yolo_detection = {
-        "detections": [
-            {
-                "class": "Pothole",
-                "confidence": 0.96,
-            },
-            {
-                "class": "Road Crack",
-                "confidence": 0.88,
-            },
-        ]
-    }
-
-    start = time.perf_counter()
-
-    result = extract_complaint_information(
-        complaint_text=complaint,
-        yolo_detection=yolo_detection,
-    )
-
-    elapsed = time.perf_counter() - start
-
-    print_result("YOLO TEST", result)
-    print(f"Time: {elapsed:.2f} sec\n")
-
-
 def test_with_image():
     """
     Replace the image path with a real image if available.
@@ -148,7 +119,6 @@ def main():
 
     test_code_mixed()
 
-    test_with_yolo()
 
     test_with_image()
 

@@ -465,8 +465,8 @@ def _parse_llm_response(raw_response: str) -> ComplaintResult:
 
 def extract_complaint_information(
     complaint_text: str,
-    yolo_detection: dict[str, Any] | None = None,
     image_path: str | None = None,
+    location: str | None = None,
 ) -> ComplaintResult:
     """
     Extract structured information from a civic complaint.
@@ -493,11 +493,11 @@ def extract_complaint_information(
     complaint_text
         Complaint text in English, Hindi, Marathi or code-mixed.
 
-    yolo_detection
-        Optional YOLO detection dictionary.
-
     image_path
         Optional complaint image.
+
+    location
+        Optional location reference.
 
     Returns
     -------
@@ -515,8 +515,8 @@ def extract_complaint_information(
     )
 
     logger.info(
-        "YOLO Detection   : %s",
-        "Yes" if yolo_detection else "No",
+        "Location         : %s",
+        "Yes" if location else "No",
     )
 
     logger.info(
@@ -559,7 +559,7 @@ def extract_complaint_information(
 
         user_prompt = build_user_prompt(
             complaint_text=complaint_text,
-            yolo_detection=yolo_detection,
+            location=location,
         )
 
         logger.debug("Prompt successfully generated.")
