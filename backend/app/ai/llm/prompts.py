@@ -60,7 +60,20 @@ RULES:
     "location": "<string or null>",
     "summary": "<string or null>",
     "confidence": <float between 0.0 and 1.0>
-}"""
+}
+IMPORTANT:
+
+Do NOT output your reasoning.
+
+Do NOT think aloud.
+
+Do NOT explain your process.
+
+Do NOT produce chain-of-thought.
+
+Return ONLY the final JSON object.
+
+Never include intermediate reasoning."""
 
 
 # =============================================================================

@@ -6,15 +6,14 @@ the entire CivicFlow AI system. No other module should call the LLM
 directly — everything routes through `extract_complaint_information()`.
 
 Architecture:
-    prompts.py  →  defines all prompt templates & formatting helpers
-    llm.py      →  owns the LLM client, request lifecycle, and response parsing
+    prompts.py  →  Prompt templates
+    llm.py      →  LLM client + request lifecycle + response parsing
 
-Swapping the LLM:
-    1. Change LLM_BASE_URL and LLM_MODEL in environment variables.
-    2. If the new model's API is not OpenAI-compatible, only `_call_llm()`
-       and `_call_llm_with_vision()` need modification.
-    3. Prompts can be adjusted in prompts.py without touching this file.
-"""
+Supports:
+- BharatCode Chat API
+- BharatCode Vision API
+- OpenAI-compatible message format
+""" 
 
 from __future__ import annotations
 
@@ -27,6 +26,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+from dotenv import load_dotenv
 
 from .prompts import (
     FALLBACK_RESPONSE,
@@ -36,48 +36,67 @@ from .prompts import (
 )
 
 # =============================================================================
+# LOAD ENVIRONMENT
+# =============================================================================
+
+load_dotenv(Path(__file__).resolve().parents[3] / ".env")
+
+# =============================================================================
 # LOGGING
 # =============================================================================
 
 logger = logging.getLogger("civicflow.ai.llm")
 
 # =============================================================================
-# CONFIGURATION (all from environment — zero hardcoded secrets)
+# CONFIGURATION
 # =============================================================================
 
-LLM_BASE_URL: str = os.getenv("LLM_BASE_URL", "http://localhost:11434/v1")
-LLM_MODEL: str = os.getenv("LLM_MODEL", "bharatcode:qwen36-35b-q6-256k-vision")
+LLM_BASE_URL: str = os.getenv(
+    "LLM_BASE_URL",
+    "https://bharatcode.ai/api/model/v1",
+)
+
+LLM_MODEL: str = os.getenv(
+    "LLM_MODEL",
+    "bharatcode:qwen36-35b-q6-256k-vision",
+)
+
+BHARATCODE_API_KEY: str | None = os.getenv("BHARATCODE_API_KEY")
+
 LLM_TIMEOUT: int = int(os.getenv("LLM_TIMEOUT", "120"))
 LLM_TEMPERATURE: float = float(os.getenv("LLM_TEMPERATURE", "0.1"))
 LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "1024"))
 
-# =============================================================================
-# TYPE ALIASES
-# =============================================================================
+if not BHARATCODE_API_KEY:
+    raise RuntimeError(
+        "BHARATCODE_API_KEY not found. Please configure backend/.env"
+    )
 
 ComplaintResult = dict[str, Any]
-
 
 # =============================================================================
 # PRIVATE HELPERS
 # =============================================================================
 
 
+def _build_headers() -> dict[str, str]:
+    """
+    Build authentication headers for BharatCode API.
+    """
+
+    return {
+        "Authorization": f"Bearer {BHARATCODE_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+
 def _encode_image_to_base64(image_path: str) -> str:
     """
-    Read an image file and return its base64-encoded string.
-
-    Args:
-        image_path: Absolute or relative path to the image file.
-
-    Returns:
-        Base64-encoded image string.
-
-    Raises:
-        FileNotFoundError: If the image file does not exist.
-        PermissionError: If the file cannot be read.
+    Encode an image to Base64 for BharatCode Vision.
     """
+
     path = Path(image_path)
+
     if not path.exists():
         raise FileNotFoundError(f"Image not found: {image_path}")
 
@@ -87,15 +106,11 @@ def _encode_image_to_base64(image_path: str) -> str:
 
 def _detect_mime_type(image_path: str) -> str:
     """
-    Detect MIME type from file extension.
-
-    Args:
-        image_path: Path to the image file.
-
-    Returns:
-        MIME type string (e.g., 'image/jpeg').
+    Detect image MIME type from extension.
     """
+
     suffix = Path(image_path).suffix.lower()
+
     mime_map = {
         ".jpg": "image/jpeg",
         ".jpeg": "image/jpeg",
@@ -104,76 +119,106 @@ def _detect_mime_type(image_path: str) -> str:
         ".gif": "image/gif",
         ".bmp": "image/bmp",
     }
-    return mime_map.get(suffix, "image/jpeg")
 
+    return mime_map.get(suffix, "image/jpeg")
+    # =============================================================================
+# MESSAGE BUILDING
+# =============================================================================
 
 def _build_messages(
     user_prompt: str,
     image_path: str | None = None,
 ) -> list[dict[str, Any]]:
     """
-    Build the messages array for the OpenAI-compatible chat API.
+    Build the OpenAI-compatible messages array for BharatCode.
 
-    When an image is provided, the user message is constructed as a
-    multimodal content block (text + image_url) and the vision addendum
-    is appended to the text portion.
-
-    Args:
-        user_prompt: The assembled user prompt text.
-        image_path: Optional path to the complaint image.
-
-    Returns:
-        List of message dictionaries ready for the API.
+    If an image is supplied, create a multimodal message consisting
+    of text + image_url (base64 encoded).
     """
+
     messages: list[dict[str, Any]] = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {
+            "role": "system",
+            "content": SYSTEM_PROMPT,
+        }
     ]
 
-    if image_path:
-        # Multimodal message with text + image
-        base64_img = _encode_image_to_base64(image_path)
-        mime_type = _detect_mime_type(image_path)
+    # ---------------------------------------------------------
+    # Text only
+    # ---------------------------------------------------------
 
-        prompt_with_vision = f"{user_prompt}\n\n{VISION_ADDENDUM}"
+    if image_path is None:
+        messages.append(
+            {
+                "role": "user",
+                "content": user_prompt,
+            }
+        )
 
-        messages.append({
+        return messages
+
+    # ---------------------------------------------------------
+    # Vision request
+    # ---------------------------------------------------------
+
+    base64_image = _encode_image_to_base64(image_path)
+    mime_type = _detect_mime_type(image_path)
+
+    prompt = f"{user_prompt}\n\n{VISION_ADDENDUM}"
+
+    messages.append(
+        {
             "role": "user",
             "content": [
-                {"type": "text", "text": prompt_with_vision},
+                {
+                    "type": "text",
+                    "text": prompt,
+                },
                 {
                     "type": "image_url",
                     "image_url": {
-                        "url": f"data:{mime_type};base64,{base64_img}",
+                        "url": (
+                            f"data:{mime_type};base64,{base64_image}"
+                        )
                     },
                 },
             ],
-        })
-    else:
-        # Text-only message
-        messages.append({"role": "user", "content": user_prompt})
+        }
+    )
 
     return messages
 
 
+# =============================================================================
+# LLM CALL
+# =============================================================================
+
 def _call_llm(messages: list[dict[str, Any]]) -> str:
     """
-    Send a chat completion request to the LLM and return the raw
-    response content.
+    Send a request to BharatCode Chat API.
 
-    Uses httpx for synchronous HTTP (compatible with FastAPI's
-    run_in_executor pattern for CPU-bound AI pipelines). If you
-    later need fully async calls, swap to httpx.AsyncClient.
+    Parameters
+    ----------
+    messages:
+        OpenAI-compatible messages list.
 
-    Args:
-        messages: The messages array for the chat API.
+    Returns
+    -------
+    str
+        Raw assistant response.
 
-    Returns:
-        Raw string content from the model's response.
+    Raises
+    ------
+    httpx.HTTPStatusError
+        If BharatCode returns a non-200 response.
 
-    Raises:
-        httpx.HTTPStatusError: On non-2xx responses from the LLM API.
-        httpx.TimeoutException: If the request exceeds LLM_TIMEOUT.
+    httpx.TimeoutException
+        If the request exceeds the configured timeout.
+
+    ValueError
+        If BharatCode returns an unexpected response.
     """
+
     url = f"{LLM_BASE_URL}/chat/completions"
 
     payload = {
@@ -184,96 +229,239 @@ def _call_llm(messages: list[dict[str, Any]]) -> str:
         "stream": False,
     }
 
-    logger.debug("Sending request to LLM at %s with model %s", url, LLM_MODEL)
+    headers = _build_headers()
+
+    logger.info("Calling BharatCode model: %s", LLM_MODEL)
+
+    logger.debug("POST %s", url)
 
     with httpx.Client(timeout=LLM_TIMEOUT) as client:
-        response = client.post(url, json=payload)
+
+        response = client.post(
+            url=url,
+            headers=headers,
+            json=payload,
+        )
+
+        logger.debug(
+            "HTTP %s returned %d",
+            url,
+            response.status_code,
+        )
+
         response.raise_for_status()
 
     data = response.json()
-    content: str = data["choices"][0]["message"]["content"]
+   
 
-    logger.debug("LLM raw response length: %d characters", len(content))
+    if "choices" not in data:
+        logger.error("Unexpected BharatCode response: %s", data)
+        raise ValueError(
+            "Response does not contain 'choices'."
+        )
+
+    if not data["choices"]:
+        raise ValueError("No choices returned by BharatCode.")
+
+    message = data["choices"][0].get("message")
+
+    if message is None:
+        raise ValueError("Missing 'message' in BharatCode response.")
+
+    content = message.get("content")
+
+    if content is None:
+        raise ValueError("Missing 'content' in BharatCode response.")
+
+    logger.debug(
+        "Received %d characters from BharatCode.",
+        len(content),
+    )
 
     return content
-
+# =============================================================================
+# RESPONSE PARSER
+# =============================================================================
 
 def _parse_llm_response(raw_response: str) -> ComplaintResult:
     """
-    Parse and validate the LLM's JSON response.
+    Parse and validate BharatCode's JSON response.
 
-    Handles common LLM quirks:
-    - Strips markdown code fences (```json ... ```)
-    - Strips leading/trailing whitespace
-    - Validates all required keys are present
+    Handles common LLM issues:
+    - Markdown code fences
+    - Extra whitespace
+    - Missing keys
+    - Invalid confidence values
+    - Invalid urgency values
 
-    Args:
-        raw_response: The raw string returned by the LLM.
-
-    Returns:
-        Validated dictionary with all required fields.
-
-    Raises:
-        ValueError: If the response cannot be parsed as valid JSON.
+    Returns
+    -------
+    ComplaintResult
     """
+
     cleaned = raw_response.strip()
 
-    # Strip markdown code fences if the model wraps output
+    # ---------------------------------------------------------
+    # Remove Markdown code fences if present
+    # ---------------------------------------------------------
+
     if cleaned.startswith("```"):
-        lines = cleaned.split("\n")
-        # Remove first line (```json) and last line (```)
+
+        lines = cleaned.splitlines()
+
         lines = [
-            line for line in lines
+            line
+            for line in lines
             if not line.strip().startswith("```")
         ]
+
         cleaned = "\n".join(lines).strip()
 
-    try:
-        parsed: dict[str, Any] = json.loads(cleaned)
-    except json.JSONDecodeError as e:
-        logger.error("Failed to parse LLM response as JSON: %s", e)
-        logger.error("Raw response was: %s", raw_response[:500])
-        raise ValueError(f"LLM returned invalid JSON: {e}") from e
+    # ---------------------------------------------------------
+    # Parse JSON
+    # ---------------------------------------------------------
 
-    # Validate required keys
-    required_keys = {"category", "department", "urgency", "location", "summary", "confidence"}
-    missing = required_keys - set(parsed.keys())
-    if missing:
-        logger.warning("LLM response missing keys: %s. Filling with null.", missing)
-        for key in missing:
+    try:
+
+        parsed: dict[str, Any] = json.loads(cleaned)
+
+    except json.JSONDecodeError as e:
+
+        logger.error("Failed to parse BharatCode JSON response.")
+        logger.error("Raw response:\n%s", raw_response)
+
+        raise ValueError(
+            f"Invalid JSON returned by BharatCode: {e}"
+        ) from e
+
+    # ---------------------------------------------------------
+    # Required Keys
+    # ---------------------------------------------------------
+
+    required_keys = {
+        "category",
+        "department",
+        "urgency",
+        "location",
+        "summary",
+        "confidence",
+    }
+
+    missing_keys = required_keys - parsed.keys()
+
+    if missing_keys:
+
+        logger.warning(
+            "Missing keys returned by LLM: %s",
+            missing_keys,
+        )
+
+        for key in missing_keys:
             parsed[key] = None
 
-    # Clamp confidence to [0.0, 1.0]
-    if parsed.get("confidence") is not None:
-        try:
-            parsed["confidence"] = max(0.0, min(1.0, float(parsed["confidence"])))
-        except (TypeError, ValueError):
-            logger.warning("Invalid confidence value: %s. Setting to 0.0.", parsed["confidence"])
-            parsed["confidence"] = 0.0
+    # ---------------------------------------------------------
+    # Confidence Validation
+    # ---------------------------------------------------------
 
-    # Validate urgency enum
-    valid_urgencies = {"Critical", "High", "Medium", "Low", None}
-    if parsed.get("urgency") not in valid_urgencies:
-        logger.warning(
-            "Invalid urgency '%s'. Attempting case-insensitive match.",
-            parsed.get("urgency"),
+    confidence = parsed.get("confidence")
+
+    try:
+
+        confidence = float(confidence)
+
+        confidence = max(
+            0.0,
+            min(
+                1.0,
+                confidence,
+            ),
         )
-        # Attempt case-insensitive correction
-        if parsed.get("urgency") and isinstance(parsed["urgency"], str):
-            for valid in {"Critical", "High", "Medium", "Low"}:
-                if parsed["urgency"].lower() == valid.lower():
+
+    except Exception:
+
+        logger.warning(
+            "Invalid confidence value '%s'. Defaulting to 0.0",
+            confidence,
+        )
+
+        confidence = 0.0
+
+    parsed["confidence"] = confidence
+
+    # ---------------------------------------------------------
+    # Urgency Validation
+    # ---------------------------------------------------------
+
+    valid_urgencies = {
+        "Critical",
+        "High",
+        "Medium",
+        "Low",
+        None,
+    }
+
+    urgency = parsed.get("urgency")
+
+    if urgency not in valid_urgencies:
+
+        if isinstance(urgency, str):
+
+            matched = False
+
+            for valid in (
+                "Critical",
+                "High",
+                "Medium",
+                "Low",
+            ):
+
+                if urgency.lower() == valid.lower():
+
                     parsed["urgency"] = valid
+                    matched = True
                     break
-            else:
+
+            if not matched:
+
+                logger.warning(
+                    "Unknown urgency '%s'. Setting to null.",
+                    urgency,
+                )
+
                 parsed["urgency"] = None
 
+        else:
+
+            parsed["urgency"] = None
+
+    # ---------------------------------------------------------
+    # Normalize Strings
+    # ---------------------------------------------------------
+
+    for key in (
+        "category",
+        "department",
+        "location",
+        "summary",
+    ):
+
+        value = parsed.get(key)
+
+        if isinstance(value, str):
+
+            parsed[key] = value.strip()
+
+    logger.info(
+        "LLM Extraction Successful | Category=%s | Urgency=%s | Confidence=%.2f",
+        parsed.get("category"),
+        parsed.get("urgency"),
+        parsed.get("confidence"),
+    )
+
     return parsed
-
-
 # =============================================================================
-# PUBLIC API — THE SINGLE ENTRY POINT
+# PUBLIC API
 # =============================================================================
-
 
 def extract_complaint_information(
     complaint_text: str,
@@ -281,116 +469,196 @@ def extract_complaint_information(
     image_path: str | None = None,
 ) -> ComplaintResult:
     """
-    Extract structured civic complaint information using the LLM.
+    Extract structured information from a civic complaint.
 
-    This is the ONLY function external modules should call.
-    It fuses complaint text, optional YOLO detections, and optional
-    image analysis into a single structured JSON result.
+    This is the ONLY public function that should be used by the rest
+    of CivicFlow AI.
 
-    Pipeline position:
-        YOLO Detection → **extract_complaint_information()** → Embedding Generation
+    Pipeline
 
-    Args:
-        complaint_text: The resident's complaint in any supported
-            language (English, Hindi, Marathi, or code-mixed).
-        yolo_detection: Optional dictionary of YOLO detection results.
-            Expected format:
-            {
-                "detections": [
-                    {"class": "Pothole", "confidence": 0.92},
-                    {"class": "Road Crack", "confidence": 0.85}
-                ]
-            }
-        image_path: Optional path to the complaint image for
-            vision model analysis.
+    Complaint
+        ↓
+    Prompt Construction
+        ↓
+    BharatCode Chat/Vision
+        ↓
+    JSON Parsing
+        ↓
+    Validation
+        ↓
+    Structured Complaint JSON
 
-    Returns:
-        Dictionary with keys:
-            - category (str | None)
-            - department (str | None)
-            - urgency (str | None): "Critical" | "High" | "Medium" | "Low"
-            - location (str | None)
-            - summary (str | None)
-            - confidence (float): 0.0 to 1.0
+    Parameters
+    ----------
+    complaint_text
+        Complaint text in English, Hindi, Marathi or code-mixed.
 
-    Example:
-        >>> result = extract_complaint_information(
-        ...     complaint_text="ABC School ke paas bahut bada pothole hai",
-        ...     yolo_detection={
-        ...         "detections": [{"class": "Pothole", "confidence": 0.92}]
-        ...     },
-        ...     image_path="/uploads/complaint_42.jpg",
-        ... )
-        >>> result
-        {
-            "category": "Road Damage",
-            "department": "Road Department",
-            "urgency": "High",
-            "location": "Near ABC School",
-            "summary": "Large pothole reported near ABC School causing traffic issues.",
-            "confidence": 0.95
-        }
+    yolo_detection
+        Optional YOLO detection dictionary.
+
+    image_path
+        Optional complaint image.
+
+    Returns
+    -------
+    ComplaintResult
     """
-    start_time = time.time()
+
+    start_time = time.perf_counter()
+
+    logger.info("=" * 80)
+    logger.info("Starting Complaint Extraction")
 
     logger.info(
-        "Processing complaint — text length: %d, YOLO: %s, image: %s",
+        "Complaint Length : %d",
         len(complaint_text),
-        "yes" if yolo_detection else "no",
-        "yes" if image_path else "no",
     )
 
-    # ── Guard: empty complaint text ──────────────────────────────────────
+    logger.info(
+        "YOLO Detection   : %s",
+        "Yes" if yolo_detection else "No",
+    )
+
+    logger.info(
+        "Image Attached   : %s",
+        "Yes" if image_path else "No",
+    )
+
+    # ------------------------------------------------------------------
+    # Validate Complaint
+    # ------------------------------------------------------------------
+
     if not complaint_text or not complaint_text.strip():
-        logger.warning("Empty complaint text received. Returning fallback.")
+
+        logger.warning("Received empty complaint.")
+
         return {**FALLBACK_RESPONSE}
 
-    # ── Validate image path if provided ──────────────────────────────────
-    if image_path and not Path(image_path).exists():
-        logger.warning(
-            "Image path '%s' does not exist. Proceeding without image.",
-            image_path,
-        )
-        image_path = None
+    # ------------------------------------------------------------------
+    # Validate Image
+    # ------------------------------------------------------------------
+
+    if image_path:
+
+        path = Path(image_path)
+
+        if not path.exists():
+
+            logger.warning(
+                "Image '%s' does not exist. Ignoring image.",
+                image_path,
+            )
+
+            image_path = None
 
     try:
-        # ── Step 1: Build the user prompt ────────────────────────────────
+
+        # --------------------------------------------------------------
+        # Build Prompt
+        # --------------------------------------------------------------
+
         user_prompt = build_user_prompt(
             complaint_text=complaint_text,
             yolo_detection=yolo_detection,
         )
 
-        # ── Step 2: Build the messages array ─────────────────────────────
+        logger.debug("Prompt successfully generated.")
+
+        # --------------------------------------------------------------
+        # Build Messages
+        # --------------------------------------------------------------
+
         messages = _build_messages(
             user_prompt=user_prompt,
             image_path=image_path,
         )
 
-        # ── Step 3: Call the LLM ─────────────────────────────────────────
+        # --------------------------------------------------------------
+        # Call BharatCode
+        # --------------------------------------------------------------
+
         raw_response = _call_llm(messages)
 
-        # ── Step 4: Parse and validate the response ──────────────────────
+        logger.debug("Raw LLM response:\n%s", raw_response)
+
+        # --------------------------------------------------------------
+        # Parse Response
+        # --------------------------------------------------------------
+
         result = _parse_llm_response(raw_response)
 
-        elapsed = time.time() - start_time
+        elapsed = time.perf_counter() - start_time
+
         logger.info(
-            "Complaint processed in %.2fs — category: %s, urgency: %s, confidence: %.2f",
+            "Complaint processed successfully in %.2f seconds.",
             elapsed,
-            result.get("category"),
-            result.get("urgency"),
-            result.get("confidence", 0.0),
         )
+
+        logger.info("=" * 80)
 
         return result
 
-    except (httpx.HTTPStatusError, httpx.TimeoutException) as e:
-        logger.error("LLM API error: %s", e)
+    # ------------------------------------------------------------------
+    # BharatCode HTTP Errors
+    # ------------------------------------------------------------------
+
+    except httpx.HTTPStatusError as e:
+
+        logger.error("=" * 80)
+        logger.error("BharatCode HTTP Error")
+
+        if e.response is not None:
+
+            logger.error(
+                "Status Code : %s",
+                e.response.status_code,
+            )
+
+            logger.error(
+                "Response Body:\n%s",
+                e.response.text,
+            )
+
+        logger.error("=" * 80)
+
         return {**FALLBACK_RESPONSE}
+
+    # ------------------------------------------------------------------
+    # Timeout
+    # ------------------------------------------------------------------
+
+    except httpx.TimeoutException as e:
+
+        logger.error("=" * 80)
+        logger.error("BharatCode Timeout")
+        logger.error(str(e))
+        logger.error("=" * 80)
+
+        return {**FALLBACK_RESPONSE}
+
+    # ------------------------------------------------------------------
+    # Parsing Errors
+    # ------------------------------------------------------------------
 
     except ValueError as e:
-        logger.error("Response parsing error: %s", e)
+
+        logger.error("=" * 80)
+        logger.error("Response Parsing Error")
+        logger.error(str(e))
+        logger.error("=" * 80)
+
         return {**FALLBACK_RESPONSE}
 
+    # ------------------------------------------------------------------
+    # Unexpected Errors
+    # ------------------------------------------------------------------
+
     except Exception as e:
-        logger.error("Unexpected error during complaint extraction: %s", e, exc_info=True)
+
+        logger.exception(
+            "Unexpected error during complaint extraction."
+        )
+
+        logger.exception(e)
+
         return {**FALLBACK_RESPONSE}
