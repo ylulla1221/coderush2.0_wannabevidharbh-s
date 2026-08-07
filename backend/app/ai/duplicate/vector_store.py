@@ -325,11 +325,8 @@ def delete_complaint(complaint_id: str) -> None:
 
     except VectorStoreError:
         raise
-
     except Exception as exc:
-        raise VectorStoreError(
-            f"Failed to delete complaint '{complaint_id}': {exc}"
-        ) from exc
+        raise _handle_qdrant_error(exc, f"Failed to delete complaint '{complaint_id}'") from exc
 
 
 def health_check() -> dict[str, Any]:
