@@ -353,18 +353,24 @@
             shadowSize: [41, 41]
           });
 
-          const marker = L.marker([issue.latitude, issue.longitude], { icon: customIcon }).addTo(map);
-          
-          const popupContent = `
-            <div class="p-1 space-y-1 text-xs">
-              <strong class="text-primary font-bold text-sm block">${issue.title}</strong>
-              <p class="text-gray-600 leading-relaxed">${issue.description}</p>
-              <span class="text-[9px] text-gray-400 block font-mono mt-1">Coords: ${issue.latitude.toFixed(4)}, ${issue.longitude.toFixed(4)}</span>
-            </div>
-          `;
-          
-          marker.bindPopup(popupContent);
-          existingMarkers.push(marker);
+          // Extract coordinates from MongoDB GeoJSON structure
+          const lat = issue.location && issue.location.coordinates ? issue.location.coordinates[1] : issue.latitude;
+          const lng = issue.location && issue.location.coordinates ? issue.location.coordinates[0] : issue.longitude;
+
+          if (lat !== undefined && lng !== undefined) {
+            const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+            
+            const popupContent = `
+              <div class="p-1 space-y-1 text-xs">
+                <strong class="text-primary font-bold text-sm block">${issue.title || issue.category || 'Issue'}</strong>
+                <p class="text-gray-600 leading-relaxed">${issue.description}</p>
+                <span class="text-[9px] text-gray-400 block font-mono mt-1">Coords: ${lat.toFixed(4)}, ${lng.toFixed(4)}</span>
+              </div>
+            `;
+            
+            marker.bindPopup(popupContent);
+            existingMarkers.push(marker);
+          }
         });
       } catch (err) {
         console.error('Failed to load existing issues:', err);
@@ -411,8 +417,11 @@
             clickMarker = null;
           }
 
-          // Immediately plot on map without page reload
-          if (issue && issue.latitude && issue.longitude) {
+          // Immediately plot on map without page reload (using GeoJSON coords if returned, else flat coordinates)
+          const lat = issue.location && issue.location.coordinates ? issue.location.coordinates[1] : (issue.latitude || latitude);
+          const lng = issue.location && issue.location.coordinates ? issue.location.coordinates[0] : (issue.longitude || longitude);
+
+          if (lat !== undefined && lng !== undefined) {
             const customIcon = L.icon({
               iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-teal.png',
               shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -421,12 +430,12 @@
               popupAnchor: [1, -34],
               shadowSize: [41, 41]
             });
-            const marker = L.marker([issue.latitude, issue.longitude], { icon: customIcon }).addTo(map);
+            const marker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
             const popupContent = `
               <div class="p-1 space-y-1 text-xs">
-                <strong class="text-primary font-bold text-sm block">${issue.title}</strong>
+                <strong class="text-primary font-bold text-sm block">${issue.title || 'Issue'}</strong>
                 <p class="text-gray-600 leading-relaxed">${issue.description}</p>
-                <span class="text-[9px] text-gray-400 block font-mono mt-1">Coords: ${issue.latitude.toFixed(4)}, ${issue.longitude.toFixed(4)}</span>
+                <span class="text-[9px] text-gray-400 block font-mono mt-1">Coords: ${lat.toFixed(4)}, ${lng.toFixed(4)}</span>
               </div>
             `;
             marker.bindPopup(popupContent);
