@@ -1,3 +1,4 @@
+// FieldCrew Model - department, ward assignment and ticket tracking
 const mongoose = require('mongoose');
 
 const fieldCrewSchema = new mongoose.Schema({
@@ -9,3 +10,4 @@ const fieldCrewSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('FieldCrew', fieldCrewSchema);
+
