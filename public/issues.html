@@ -101,6 +101,25 @@
             <textarea id="form-description" rows="4" required placeholder="Please describe the issue in detail..." class="w-full p-2.5 border border-gray-300 rounded focus:ring-1 focus:ring-secondary focus:border-secondary text-xs"></textarea>
           </div>
 
+          <div>
+            <label class="block font-semibold text-primary mb-1">Search Address / Landmark</label>
+            <div class="flex gap-2">
+              <div class="relative flex-grow">
+                <span class="material-symbols-outlined absolute left-2.5 top-2 text-gray-400 text-base">search</span>
+                <input type="text" id="form-address" placeholder="E.g., FC Road, Pune" class="w-full pl-8 pr-2 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-secondary focus:border-secondary text-xs"/>
+              </div>
+              <button type="button" onclick="geocodeAddress()" class="bg-primary hover:bg-[#001c4a] text-white px-3 py-1.5 rounded text-xs font-semibold flex items-center justify-center gap-1 active:scale-95 transition-all">
+                <span class="material-symbols-outlined text-sm">location_searching</span> Find
+              </button>
+            </div>
+            <span class="text-[9px] text-gray-400 mt-1 block">Type and click "Find" to center the map.</span>
+          </div>
+
+          <button type="button" onclick="locateUser()" class="w-full border border-gray-300 bg-white hover:bg-gray-50 text-primary font-semibold py-2 rounded transition-all active:scale-95 flex items-center justify-center gap-1.5 text-xs shadow-sm">
+            <span class="material-symbols-outlined text-sm">my_location</span>
+            Use Current Location (GPS)
+          </button>
+
           <!-- Latitude/Longitude display indicator -->
           <div class="bg-gray-50 p-3 rounded-lg border border-gray-200 font-mono text-[10px] space-y-1">
             <span class="text-gray-400 block uppercase font-sans font-bold tracking-wider">Selected Location</span>
@@ -221,6 +240,76 @@
       document.getElementById('form-longitude').value = lng.toFixed(6);
       document.getElementById('display-lat').textContent = lat.toFixed(6);
       document.getElementById('display-lng').textContent = lng.toFixed(6);
+    }
+
+    // Geocode typed address using OpenStreetMap Nominatim API
+    async function geocodeAddress() {
+      const address = document.getElementById('form-address').value.trim();
+      if (!address) {
+        showToast('Please type an address or landmark first.', 'error');
+        return;
+      }
+
+      showToast('Searching location...');
+      
+      try {
+        const query = encodeURIComponent(`${address}, Pune, India`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
+        const data = await res.json();
+
+        if (data && data.length > 0) {
+          const lat = parseFloat(data[0].lat);
+          const lng = parseFloat(data[0].lon);
+
+          setFormCoordinates(lat, lng);
+          placeClickMarker(lat, lng);
+          map.setView([lat, lng], 15);
+          showToast('Location found and pinned!');
+        } else {
+          showToast('Location not found. Try adding details.', 'error');
+        }
+      } catch (err) {
+        console.error('Geocoding error:', err);
+        showToast('Search request failed.', 'error');
+      }
+    }
+
+    // Access real-time user browser GPS coordinates
+    function locateUser() {
+      if (!navigator.geolocation) {
+        showToast('Geolocation is not supported by your browser.', 'error');
+        return;
+      }
+
+      showToast('Acquiring GPS location lock...');
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          setFormCoordinates(lat, lng);
+          placeClickMarker(lat, lng);
+          map.setView([lat, lng], 15);
+          showToast('Acquired current GPS coordinate locks.');
+
+          // Reverse geocode to fill in address input
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+            const data = await res.json();
+            if (data && data.display_name) {
+              document.getElementById('form-address').value = data.display_name;
+            }
+          } catch (e) {
+            console.error('Reverse geocoding error:', e);
+          }
+        },
+        (error) => {
+          console.error('GPS error:', error);
+          showToast('Unable to retrieve location. Please check browser permissions.', 'error');
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      );
     }
 
     // Fetch and plot reported issues
