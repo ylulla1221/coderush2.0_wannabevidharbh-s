@@ -253,3 +253,48 @@ class RoutingResult(BaseModel):
             "was reached. Generated deterministically — no LLM involved."
         ),
     )
+
+    # -------------------------------------------------------------------------
+    # Phase 4 — Operational Planning Engine fields
+    # -------------------------------------------------------------------------
+
+    expected_response_hours: int | None = Field(
+        default=None,
+        description=(
+            "Expected complaint resolution time in hours based on the "
+            "department's operational plan (MVP: equals sla_hours from plan)."
+        ),
+    )
+
+    current_workload: int | None = Field(
+        default=None,
+        description="Number of active complaints currently in the department's queue.",
+    )
+
+    queue_capacity: int | None = Field(
+        default=None,
+        description="Maximum queue capacity for the assigned department.",
+    )
+
+    workload_percentage: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=100.0,
+        description="Department queue utilisation as a percentage (0–100).",
+    )
+
+    sla_risk: str = Field(
+        default="Unknown",
+        description=(
+            "SLA risk derived from current workload: "
+            "\"Low\" | \"Medium\" | \"High\" | \"Unknown\"."
+        ),
+    )
+
+    escalation_chain: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Ordered list of escalation roles for this department, "
+            "as defined in planning_rules.json."
+        ),
+    )

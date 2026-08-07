@@ -1,0 +1,129 @@
+{
+  "Road Department": {
+    "default_sla_hours": 24,
+    "escalation_after_hours": 24,
+    "escalation_chain": [
+      "Ward Officer",
+      "Assistant Municipal Commissioner",
+      "Municipal Commissioner"
+    ],
+    "current_workload": 18,
+    "queue_capacity": 30
+  },
+
+  "Water Supply Department": {
+    "default_sla_hours": 12,
+    "escalation_after_hours": 12,
+    "escalation_chain": [
+      "Ward Officer",
+      "Deputy City Engineer (Water)",
+      "City Engineer",
+      "Municipal Commissioner"
+    ],
+    "current_workload": 22,
+    "queue_capacity": 40
+  },
+
+  "Sanitation Department": {
+    "default_sla_hours": 48,
+    "escalation_after_hours": 48,
+    "escalation_chain": [
+      "Ward Sanitary Inspector",
+      "Deputy Medical Officer of Health",
+      "Medical Officer of Health",
+      "Municipal Commissioner"
+    ],
+    "current_workload": 35,
+    "queue_capacity": 50
+  },
+
+  "Electricity Department": {
+    "default_sla_hours": 24,
+    "escalation_after_hours": 12,
+    "escalation_chain": [
+      "Ward Electrical Officer",
+      "Executive Engineer (Electrical)",
+      "Chief Electrical Engineer",
+      "Municipal Commissioner"
+    ],
+    "current_workload": 12,
+    "queue_capacity": 25
+  },
+
+  "Parks Department": {
+    "default_sla_hours": 72,
+    "escalation_after_hours": 72,
+    "escalation_chain": [
+      "Ward Horticulture Officer",
+      "Superintendent of Gardens",
+      "Municipal Commissioner"
+    ],
+    "current_workload": 8,
+    "queue_capacity": 20
+  },
+
+  "Traffic Department": {
+    "default_sla_hours": 48,
+    "escalation_after_hours": 48,
+    "escalation_chain": [
+      "Traffic Inspector",
+      "Deputy Commissioner of Police (Traffic)",
+      "Commissioner of Police",
+      "Municipal Commissioner"
+    ],
+    "current_workload": 20,
+    "queue_capacity": 35
+  },
+
+  "Public Safety Department": {
+    "default_sla_hours": 12,
+    "escalation_after_hours": 6,
+    "escalation_chain": [
+      "Ward Safety Officer",
+      "Deputy Commissioner of Police",
+      "Commissioner of Police",
+      "Municipal Commissioner"
+    ],
+    "current_workload": 10,
+    "queue_capacity": 20
+  },
+
+  "Public Works Department": {
+    "default_sla_hours": 48,
+    "escalation_after_hours": 48,
+    "escalation_chain": [
+      "Ward Engineer",
+      "Executive Engineer (Civil)",
+      "Superintending Engineer",
+      "Municipal Commissioner"
+    ],
+    "current_workload": 14,
+    "queue_capacity": 25
+  },
+
+  "Town Planning Department": {
+    "default_sla_hours": 72,
+    "escalation_after_hours": 72,
+    "escalation_chain": [
+      "Ward Town Planning Officer",
+      "Deputy Director of Town Planning",
+      "Director of Town Planning",
+      "Municipal Commissioner"
+    ],
+    "current_workload": 9,
+    "queue_capacity": 15
+  },
+
+  "Environmental Department": {
+    "default_sla_hours": 72,
+    "escalation_after_hours": 72,
+    "escalation_chain": [
+      "Ward Environment Officer",
+      "Deputy Director of Environment",
+      "Director of Environment",
+      "Municipal Commissioner"
+    ],
+    "current_workload": 6,
+    "queue_capacity": 20
+  }
+}

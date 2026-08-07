@@ -63,6 +63,7 @@ from .exceptions import RoutingValidationError
 from .jurisdiction import lookup_location
 from .knowledge_base import get_fallback_route, lookup_category
 from .models import RoutingInput, RoutingResult
+from .planning_engine import get_department_plan
 
 logger = logging.getLogger("civicflow.ai.routing")
 
@@ -545,6 +546,37 @@ def _build_decision_explanation(
     return explanation
 
 
+def _enrich_explanation_with_planning(
+    explanation: list[str],
+    workload_percentage: float | None,
+    expected_response_hours: int | None,
+    sla_risk: str,
+) -> None:
+    """Append Phase 4 operational planning sentences to the explanation list.
+
+    Mutates ``explanation`` in-place so the Phase 3 sentences are preserved
+    and the Phase 4 sentences are appended after them.
+
+    Args:
+        explanation:            Existing explanation list from Phase 3.
+        workload_percentage:    Queue utilisation percentage, or ``None``.
+        expected_response_hours: Expected response in hours, or ``None``.
+        sla_risk:               SLA risk label (``"Low"`` / ``"Medium"`` /
+                                ``"High"`` / ``"Unknown"``)
+    """
+    if workload_percentage is not None:
+        explanation.append(
+            f"Current workload is {workload_percentage:.0f}%."
+        )
+    if expected_response_hours is not None:
+        explanation.append(
+            f"Expected response within {expected_response_hours} hour"
+            + ("s" if expected_response_hours != 1 else "") + "."
+        )
+    explanation.append(f"SLA risk is {sla_risk}.")
+
+
+
 
 # =============================================================================
 # FALLBACK RESULT
@@ -595,6 +627,13 @@ def _build_fallback_result(exc: Exception) -> dict[str, Any]:
             f"Cause: {exc}",
             "Manual review required.",
         ],
+        # Phase 4 — Operational Planning fields (unknown on validation failure)
+        expected_response_hours=None,
+        current_workload=None,
+        queue_capacity=None,
+        workload_percentage=None,
+        sla_risk="Unknown",
+        escalation_chain=[],
     ).model_dump()
 
 
@@ -801,7 +840,21 @@ def calculate_route(
     )
 
     # ------------------------------------------------------------------
-    # Step 12 — assemble result
+    # Step 12 — Phase 4: Operational Planning
+    # ------------------------------------------------------------------
+
+    plan = get_department_plan(department)
+
+    # Extend the decision explanation with planning sentences
+    _enrich_explanation_with_planning(
+        explanation=decision_explanation,
+        workload_percentage=plan.workload_percentage,
+        expected_response_hours=plan.expected_response_hours,
+        sla_risk=plan.sla_risk,
+    )
+
+    # ------------------------------------------------------------------
+    # Step 13 — assemble result
     # ------------------------------------------------------------------
 
     result = RoutingResult(
@@ -829,13 +882,21 @@ def calculate_route(
         decision_status=decision_status,
         alternative_department=alt_dept,
         decision_explanation=decision_explanation,
+        # Phase 4 — Operational Planning fields
+        expected_response_hours=plan.expected_response_hours,
+        current_workload=plan.current_workload,
+        queue_capacity=plan.queue_capacity,
+        workload_percentage=plan.workload_percentage,
+        sla_risk=plan.sla_risk,
+        escalation_chain=plan.escalation_chain,
     )
 
     logger.info(
         "Routing completed | Department=%s (%s) | Team=%s | "
         "Zone=%s | SLA=%dh | Escalation=%s | Status=%s | "
         "Ward=%s | MunicipalBody=%s | JurisdictionFound=%s | "
-        "Confidence=%.3f (%s) | HumanReview=%s | DecisionStatus=%s",
+        "Confidence=%.3f (%s) | HumanReview=%s | DecisionStatus=%s | "
+        "Workload=%.1f%% | SLARisk=%s",
         result.department,
         result.department_code,
         result.team,
@@ -850,6 +911,8 @@ def calculate_route(
         result.routing_confidence_level,
         result.human_review_required,
         result.decision_status,
+        result.workload_percentage if result.workload_percentage is not None else 0.0,
+        result.sla_risk,
     )
     logger.info("=" * 80)
 
