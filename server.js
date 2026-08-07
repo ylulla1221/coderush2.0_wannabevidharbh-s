@@ -98,9 +98,83 @@ async function seedDatabase() {
           assignedWard: 'Ward 12',
           status: 'Available',
           activeTickets: 0
+        },
+        {
+          crewName: 'Zone B Sanitation Crew',
+          department: 'Sanitation & Waste',
+          assignedWard: 'Zone B',
+          status: 'On Duty',
+          activeTickets: 3
         }
       ]);
       console.log('Seeded default field crews in MongoDB.');
+    }
+
+    const complaintCount = await Complaint.countDocuments();
+    if (complaintCount === 0) {
+      await Complaint.create([
+        {
+          title: 'Large pothole near YCCE College',
+          category: 'Road Repair / Pothole',
+          description: 'A deep pothole has been damaging vehicles near YCCE College entrance on Hingna Road.',
+          landmark: 'YCCE College',
+          city: 'Nagpur',
+          priority: 'HIGH',
+          location: { type: 'Point', coordinates: [79.0193, 21.0969] },
+          address: 'YCCE College, Hingna Road, Nagpur',
+          reporter: { name: 'Ramesh Kumar', contact: 'ramesh.k@gmail.com' },
+          status: 'PENDING'
+        },
+        {
+          title: 'Water pipe burst near Sitabuldi Market',
+          category: 'Water Supply',
+          description: 'A main water supply pipe has burst near Sitabuldi Market causing flooding on the road.',
+          landmark: 'Sitabuldi Market',
+          city: 'Nagpur',
+          priority: 'CRITICAL',
+          location: { type: 'Point', coordinates: [79.0831, 21.1458] },
+          address: 'Sitabuldi Market, Nagpur',
+          reporter: { name: 'Ananya Verma', contact: 'ananya.v@gmail.com' },
+          status: 'IN_INVESTIGATION'
+        },
+        {
+          title: 'Streetlight outage on Wardha Road',
+          category: 'Streetlight Outage',
+          description: 'Five consecutive streetlights are non-functional on Wardha Road near Pratap Nagar causing safety hazard at night.',
+          landmark: 'Pratap Nagar',
+          city: 'Nagpur',
+          priority: 'MODERATE',
+          location: { type: 'Point', coordinates: [79.0520, 21.1022] },
+          address: 'Wardha Road, Pratap Nagar, Nagpur',
+          reporter: { name: 'Ramesh Kumar', contact: 'ramesh.k@gmail.com' },
+          status: 'PENDING'
+        },
+        {
+          title: 'Garbage pile-up near Dharampeth Colony',
+          category: 'Sanitation & Waste',
+          description: 'Garbage has not been collected for over 5 days near Dharampeth Colony resulting in foul smell and hygiene issues.',
+          landmark: 'Dharampeth Colony',
+          city: 'Nagpur',
+          priority: 'MODERATE',
+          location: { type: 'Point', coordinates: [79.0614, 21.1533] },
+          address: 'Dharampeth Colony, Nagpur',
+          reporter: { name: 'Ananya Verma', contact: 'ananya.v@gmail.com' },
+          status: 'DISPATCHED'
+        },
+        {
+          title: 'Graffiti on municipal wall near CP Railu Gate',
+          category: 'Graffiti',
+          description: 'Vandal spray paint graffiti has been reported on the white-washed civic boundary wall near CP Railu Gate.',
+          landmark: 'CP Railu Gate',
+          city: 'Nagpur',
+          priority: 'LOW',
+          location: { type: 'Point', coordinates: [79.0785, 21.1401] },
+          address: 'CP Railway Station Gate, Nagpur',
+          reporter: { name: 'Ramesh Kumar', contact: 'ramesh.k@gmail.com' },
+          status: 'RESOLVED'
+        }
+      ]);
+      console.log('Seeded sample complaints in MongoDB.');
     }
   } catch (err) {
     console.error('Seeding MongoDB database failed:', err);
