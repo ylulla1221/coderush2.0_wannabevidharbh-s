@@ -271,7 +271,6 @@ def search_similar(
         ).points
 
         matches: list[dict[str, Any]] = []
-
         for hit in results:
             payload = hit.payload or {}
             matches.append(
@@ -346,8 +345,8 @@ def health_check() -> dict[str, Any]:
     """
     health: dict[str, Any] = {
         "status": "unhealthy",
-        "host": QDRANT_URL if QDRANT_URL else QDRANT_HOST,
-        "port": QDRANT_PORT if not QDRANT_URL else None,
+        "host": QDRANT_HOST,
+        "port": QDRANT_PORT,
         "collection": QDRANT_COLLECTION,
         "vector_count": 0,
         "error": None,
@@ -369,15 +368,11 @@ def health_check() -> dict[str, Any]:
         )
 
     except Exception as exc:
-        try:
-            err = _handle_qdrant_error(exc, "Health check failed")
-            health["error"] = str(err)
-        except Exception:
-            health["error"] = str(exc)
+        health["error"] = str(exc)
 
         logger.warning(
             "Vector store health check failed: %s",
-            health["error"],
+            exc,
         )
 
     return health
