@@ -132,9 +132,9 @@ const OverviewTab = {
       this.miniMap = null;
     }
 
-    // Default coordinates (Chicago main road)
-    const lat = 41.8795;
-    const lng = -87.6255;
+    // Default coordinates - Nagpur, India
+    const lat = 21.1458;
+    const lng = 79.0882;
 
     this.miniMap = L.map('overview-mini-map', {
       zoomControl: false,
@@ -149,19 +149,21 @@ const OverviewTab = {
     this.markersGroup = L.layerGroup().addTo(this.miniMap);
 
     // Plot active complaints on the map
-    const activeComplaints = window.appState.cachedComplaints.filter(c => c.status !== 'Resolved' && c.lat && c.lng);
+    const activeComplaints = window.appState.cachedComplaints.filter(c => c.status !== 'Resolved' && c.status !== 'RESOLVED' && (c.latitude || c.lat) && (c.longitude || c.lng));
     activeComplaints.forEach(c => {
+      const cLat = c.latitude || c.lat;
+      const cLng = c.longitude || c.lng;
       let color = '#3b82f6'; // default moderate blue
-      if (c.priority === 'Urgent') color = '#ef4444'; // urgent red
-      else if (c.priority === 'Low') color = '#10b981'; // low emerald
+      if (c.priority === 'CRITICAL' || c.priority === 'HIGH' || c.priority === 'Urgent') color = '#ef4444';
+      else if (c.priority === 'LOW' || c.priority === 'Low') color = '#10b981';
 
-      L.circleMarker([c.lat, c.lng], {
+      L.circleMarker([cLat, cLng], {
         radius: 6,
         fillColor: color,
         color: '#ffffff',
         weight: 1.5,
         fillOpacity: 0.95
-      }).addTo(this.markersGroup).bindPopup(`<b>${c.id}</b><br/>${c.category}`);
+      }).addTo(this.markersGroup).bindPopup(`<b>${c.category}</b><br/>${c.address || c.landmark || c.description?.substring(0, 60)}`);
     });
   },
 
@@ -182,7 +184,7 @@ const OverviewTab = {
 
     document.getElementById('details-date').textContent = c.date;
     document.getElementById('details-address').textContent = c.address;
-    document.getElementById('details-coords').textContent = `Coords: ${c.lat ? c.lat.toFixed(4) : 'N/A'}, ${c.lng ? c.lng.toFixed(4) : 'N/A'}`;
+    document.getElementById('details-coords').textContent = `Coords: ${(c.latitude || c.lat) ? (c.latitude || c.lat).toFixed(4) : 'N/A'}, ${(c.longitude || c.lng) ? (c.longitude || c.lng).toFixed(4) : 'N/A'}`;
     document.getElementById('details-confidence').textContent = `Confidence: ${c.locationConfidence || 0.85}`;
 
     // Select current status & crew values
