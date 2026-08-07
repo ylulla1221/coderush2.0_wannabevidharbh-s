@@ -12,11 +12,21 @@ const AuditLog = require('./models/AuditLog');
 
 const { getAddressFromCoords, getCoordsFromAddress } = require('./geocoder');
 
+const lifecycleRoutes = require('./routes/lifecycle');
+const { assignSLA } = require('./services/slaEngine');
+const auditService = require('./services/auditService');
+const notificationEngine = require('./services/notificationEngine');
+const { runEscalationScan } = require('./services/escalationEngine');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'frontend', 'public')));
+
+// Register Lifecycle API Routes
+app.use('/api', lifecycleRoutes);
+
 
 // MongoDB Connection Setup
 
@@ -315,15 +325,40 @@ app.post('/api/complaints', async (req, res) => {
       status: status || "PENDING"
     });
 
-    await AuditLog.create({
-      ticketId: newComplaint._id.toString(),
-      action: 'COMPLAINT_CREATED',
-      performedBy: 'CITIZEN_PORTAL',
-      details: `Complaint intake via standard/AI form. Auto-geocoded coordinates: ${lat}, ${lng}`
-    });
+    // --- Phase 1: Assign SLA & Auto-Route ---
+    const currentYear = new Date().getFullYear();
+    newComplaint.referenceNumber = `CF-${currentYear}-${newComplaint._id.toString().slice(-5).toUpperCase()}`;
+    newComplaint.sla = assignSLA(newComplaint.priority, newComplaint.createdAt);
+    newComplaint.lifecycleStatus = 'ROUTED';
+    newComplaint.assignedDepartment = analysis.routing?.department || 'General';
+    await newComplaint.save();
 
-    res.status(201).json({ success: true, id: newComplaint._id.toString(), lat, lng });
+    await auditService.log(
+      newComplaint._id.toString(),
+      'COMPLAINT_SUBMITTED',
+      'CITIZEN_PORTAL',
+      `Complaint intake via standard/AI form. Auto-geocoded coordinates: ${lat}, ${lng}`
+    );
+
+    await auditService.log(
+      newComplaint._id.toString(),
+      'AI_PROCESSED',
+      'SYSTEM',
+      `AI analysis complete. Priority: ${newComplaint.priority}, Category: ${newComplaint.category}`
+    );
+
+    await auditService.log(
+      newComplaint._id.toString(),
+      'COMPLAINT_ROUTED',
+      'SYSTEM',
+      `Automatically routed to ${newComplaint.assignedDepartment}. SLA Assigned: ${newComplaint.sla.hoursAllotted}h.`
+    );
+
+    await notificationEngine.notify(newComplaint, 'COMPLAINT_SUBMITTED');
+
+    res.status(201).json({ success: true, id: newComplaint._id.toString(), referenceNumber: newComplaint.referenceNumber, lat, lng });
   } catch (err) {
+
     res.status(500).json({ error: err.message });
   }
 });
@@ -552,11 +587,14 @@ app.get('/api/stats', async (req, res) => {
     const urgentQueue = complaints.filter(c => c.priority === 'CRITICAL' || c.priority === 'HIGH' || c.priority === 'Urgent').length;
     const totalTickets = complaints.length;
 
+    // Phase 1: Count true breaches
+    const breachedCount = complaints.filter(c => c.sla?.status === 'BREACHED').length;
+
     const counts = {
-      Submitted: complaints.filter(c => c.status === 'PENDING' || c.status === 'Submitted').length,
-      Assigned: complaints.filter(c => c.status === 'IN_INVESTIGATION' || c.status === 'Assigned').length,
-      'In Investigation': complaints.filter(c => c.status === 'DISPATCHED' || c.status === 'In Investigation').length,
-      Resolved: complaints.filter(c => c.status === 'RESOLVED' || c.status === 'Resolved').length
+      Submitted: complaints.filter(c => c.status === 'PENDING' || c.status === 'Submitted' || c.lifecycleStatus === 'SUBMITTED').length,
+      Assigned: complaints.filter(c => c.status === 'IN_INVESTIGATION' || c.status === 'Assigned' || c.lifecycleStatus === 'ASSIGNED').length,
+      'In Investigation': complaints.filter(c => c.status === 'DISPATCHED' || c.status === 'In Investigation' || c.lifecycleStatus === 'IN_PROGRESS').length,
+      Resolved: complaints.filter(c => c.status === 'RESOLVED' || c.status === 'Resolved' || c.lifecycleStatus === 'RESOLVED').length
     };
 
     const priorityDistribution = {
@@ -568,10 +606,10 @@ app.get('/api/stats', async (req, res) => {
     res.json({
       totalActive,
       urgentQueue,
-      slaBreachedCount: 0,
+      slaBreachedCount: breachedCount,
       metrics: {
         totalTickets,
-        breachedTotal: 0
+        breachedTotal: breachedCount
       },
       counts,
       priorityDistribution,
@@ -967,4 +1005,17 @@ app.get('/api/admin/stats', async (req, res) => {
 // Start Server
 app.listen(PORT, () => {
   console.log(`CivicPulse backend server running on port ${PORT}`);
+
+  // Phase 1: Start SLA Escalation Scanner
+  console.log('Starting SLA Auto-Escalation Engine...');
+  
+  // Run once on startup after a brief delay to ensure DB is connected
+  setTimeout(() => {
+    runEscalationScan().catch(err => console.error('Initial SLA scan failed:', err));
+  }, 5000);
+
+  // Then run every 5 minutes
+  setInterval(() => {
+    runEscalationScan().catch(err => console.error('SLA scan interval failed:', err));
+  }, 5 * 60 * 1000);
 });
