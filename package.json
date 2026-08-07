@@ -1,10 +1,11 @@
 {
   "name": "civicpulse-redressal-hub",
   "version": "1.0.0",
-  "description": "CivicPulse Municipal Redressal Hub with real SQL database integration and distributed frontend components",
+  "description": "CivicPulse Municipal Redressal Hub with MongoDB database integration and distributed frontend components",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
