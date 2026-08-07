@@ -56,6 +56,7 @@ Design Principles
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
 from typing import Any
 
 from . import config, constants
@@ -66,6 +67,19 @@ from .models import RoutingInput, RoutingResult
 from .planning_engine import get_department_plan
 
 logger = logging.getLogger("civicflow.ai.routing")
+
+# Routing Engine version — bump this when breaking changes are made to the
+# routing pipeline so audit records can be traced to a specific engine.
+_ROUTING_VERSION: str = "2.0.0"
+
+# Ordered list of pipeline stage names used to build the provenance object.
+_PIPELINE_STAGES: list[str] = [
+    "Category Classification",
+    "Routing Knowledge Base",
+    "Jurisdiction Resolution",
+    "Decision Engine",
+    "Planning Engine",
+]
 
 # =============================================================================
 # PRIVATE HELPERS
@@ -576,7 +590,106 @@ def _enrich_explanation_with_planning(
     explanation.append(f"SLA risk is {sla_risk}.")
 
 
+# =============================================================================
+# PRIVATE — PHASE 5: GOVERNANCE & ACCOUNTABILITY
+#
+# Builds all governance metadata from facts already computed by the pipeline.
+# Entirely deterministic — no LLM, no randomness, no external I/O.
+# =============================================================================
 
+# Governance version constant is defined at module level (_ROUTING_VERSION).
+
+
+def _build_governance(
+    decision_status: str,
+    routing_confidence: float,
+    human_review_required: bool,
+    jurisdiction_found: bool,
+    department_resolved: bool,
+    complaint_data: dict[str, Any],
+) -> tuple[str, str, dict, dict, dict]:
+    """Produce all Phase 5 governance & accountability objects.
+
+    Everything is derived deterministically from facts already computed by
+    Phases 1–4.  No LLM, no ML, no external calls.
+
+    Args:
+        decision_status:       ``"automatic"`` or ``"human_review"``.
+        routing_confidence:    Composite confidence score from Phase 3.
+        human_review_required: Whether human review was triggered.
+        jurisdiction_found:    Whether Phase 2 resolved the location.
+        department_resolved:   Whether Phase 1 matched a department.
+        complaint_data:        Original complaint dict (may contain
+                               ``language`` or ``input_language`` key).
+
+    Returns:
+        A tuple of
+        (governance_status, accountability_summary, provenance, audit,
+         fairness_review).
+    """
+    # 1. Governance status
+    governance_status = "governed" if decision_status == "automatic" else "requires_review"
+
+    # 2. Accountability summary (deterministic templates)
+    if decision_status == "automatic":
+        accountability_summary = (
+            "The complaint was routed automatically using category "
+            "classification, jurisdiction lookup, and routing knowledge base. "
+            "No human override was required."
+        )
+    else:
+        parts: list[str] = []
+        if not department_resolved:
+            parts.append("the category could not be mapped to a department")
+        if not jurisdiction_found:
+            parts.append("the jurisdiction could not be resolved")
+        if not parts:
+            parts.append("routing confidence was below the required threshold")
+        reason_str = " and ".join(parts)
+        accountability_summary = (
+            f"The complaint requires human review because {reason_str}."
+        )
+
+    # 3. Provenance
+    provenance: dict[str, Any] = {
+        "pipeline": list(_PIPELINE_STAGES),
+        "routing_version": _ROUTING_VERSION,
+    }
+
+    # 4. Audit snapshot
+    audit: dict[str, Any] = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "routing_version": _ROUTING_VERSION,
+        "decision_status": decision_status,
+        "routing_confidence": routing_confidence,
+    }
+
+    # 5. Fairness review
+    # Language information is read from the upstream complaint payload if
+    # present; no language detection is performed here.
+    translation_used: bool = bool(
+        complaint_data.get("translation_used")
+        or complaint_data.get("translated")
+    )
+    input_language: str = str(
+        complaint_data.get("input_language")
+        or complaint_data.get("language")
+        or "Unknown"
+    )
+    fairness_notes = (
+        "Routing completed using deterministic rules."
+        if not human_review_required
+        else "Manual review required; fairness of routing cannot be automatically guaranteed."
+    )
+    fairness_review: dict[str, Any] = {
+        "translation_used": translation_used,
+        "input_language": input_language,
+        "jurisdiction_found": jurisdiction_found,
+        "manual_review_required": human_review_required,
+        "notes": fairness_notes,
+    }
+
+    return governance_status, accountability_summary, provenance, audit, fairness_review
 
 # =============================================================================
 # FALLBACK RESULT
@@ -634,6 +747,32 @@ def _build_fallback_result(exc: Exception) -> dict[str, Any]:
         workload_percentage=None,
         sla_risk="Unknown",
         escalation_chain=[],
+        # Phase 5 — Governance & Accountability fields
+        governance_status="requires_review",
+        accountability_summary=(
+            "The complaint requires human review because input validation failed."
+        ),
+        human_override_allowed=True,
+        human_override_reason=None,
+        human_override_timestamp=None,
+        human_override_by=None,
+        provenance={
+            "pipeline": list(_PIPELINE_STAGES),
+            "routing_version": _ROUTING_VERSION,
+        },
+        audit={
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "routing_version": _ROUTING_VERSION,
+            "decision_status": "human_review",
+            "routing_confidence": 0.0,
+        },
+        fairness_review={
+            "translation_used": False,
+            "input_language": "Unknown",
+            "jurisdiction_found": False,
+            "manual_review_required": True,
+            "notes": "Manual review required; fairness of routing cannot be automatically guaranteed.",
+        },
     ).model_dump()
 
 
@@ -854,7 +993,26 @@ def calculate_route(
     )
 
     # ------------------------------------------------------------------
-    # Step 13 — assemble result
+    # Step 13 — Phase 5: Governance & Accountability
+    # ------------------------------------------------------------------
+
+    (
+        governance_status,
+        accountability_summary,
+        provenance,
+        audit,
+        fairness_review,
+    ) = _build_governance(
+        decision_status=decision_status,
+        routing_confidence=routing_confidence,
+        human_review_required=human_review_required,
+        jurisdiction_found=jurisdiction_found,
+        department_resolved=department_resolved,
+        complaint_data=complaint_data,
+    )
+
+    # ------------------------------------------------------------------
+    # Step 14 — assemble result
     # ------------------------------------------------------------------
 
     result = RoutingResult(
@@ -889,6 +1047,16 @@ def calculate_route(
         workload_percentage=plan.workload_percentage,
         sla_risk=plan.sla_risk,
         escalation_chain=plan.escalation_chain,
+        # Phase 5 — Governance & Accountability fields
+        governance_status=governance_status,
+        accountability_summary=accountability_summary,
+        human_override_allowed=True,
+        human_override_reason=None,
+        human_override_timestamp=None,
+        human_override_by=None,
+        provenance=provenance,
+        audit=audit,
+        fairness_review=fairness_review,
     )
 
     logger.info(
@@ -896,7 +1064,7 @@ def calculate_route(
         "Zone=%s | SLA=%dh | Escalation=%s | Status=%s | "
         "Ward=%s | MunicipalBody=%s | JurisdictionFound=%s | "
         "Confidence=%.3f (%s) | HumanReview=%s | DecisionStatus=%s | "
-        "Workload=%.1f%% | SLARisk=%s",
+        "Workload=%.1f%% | SLARisk=%s | GovernanceStatus=%s",
         result.department,
         result.department_code,
         result.team,
@@ -913,6 +1081,7 @@ def calculate_route(
         result.decision_status,
         result.workload_percentage if result.workload_percentage is not None else 0.0,
         result.sla_risk,
+        result.governance_status,
     )
     logger.info("=" * 80)
 

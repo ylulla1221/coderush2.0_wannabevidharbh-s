@@ -298,3 +298,68 @@ class RoutingResult(BaseModel):
             "as defined in planning_rules.json."
         ),
     )
+
+    # -------------------------------------------------------------------------
+    # Phase 5 — Governance & Accountability Layer fields
+    # -------------------------------------------------------------------------
+
+    governance_status: str = Field(
+        default="requires_review",
+        description=(
+            "\"governed\" when the decision was made automatically with "
+            "sufficient confidence; \"requires_review\" when human review "
+            "is needed."
+        ),
+    )
+
+    accountability_summary: str = Field(
+        default="",
+        description=(
+            "Deterministic, citizen-facing single-sentence summary of how "
+            "the routing decision was reached and whether review is needed."
+        ),
+    )
+
+    human_override_allowed: bool = Field(
+        default=True,
+        description="Always True — any routing decision may be overridden by an authorised reviewer.",
+    )
+
+    human_override_reason: str | None = Field(
+        default=None,
+        description="Free-text reason supplied when a human overrides this decision. Null until set.",
+    )
+
+    human_override_timestamp: str | None = Field(
+        default=None,
+        description="ISO-8601 timestamp of the most recent human override. Null until set.",
+    )
+
+    human_override_by: str | None = Field(
+        default=None,
+        description="Identifier of the reviewer who performed the last override. Null until set.",
+    )
+
+    provenance: dict = Field(
+        default_factory=dict,
+        description=(
+            "Structured record of the pipeline stages that produced this "
+            "routing decision and the engine version."
+        ),
+    )
+
+    audit: dict = Field(
+        default_factory=dict,
+        description=(
+            "Audit snapshot: timestamp of the routing decision, engine "
+            "version, decision_status, and routing_confidence."
+        ),
+    )
+
+    fairness_review: dict = Field(
+        default_factory=dict,
+        description=(
+            "Lightweight fairness context recorded at routing time. "
+            "Not an AI model — purely observational metadata."
+        ),
+    )
