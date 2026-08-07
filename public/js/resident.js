@@ -80,13 +80,14 @@ const ResidentPortal = {
     const container = document.getElementById('res-mini-map');
     if (!container) return;
 
-    // Center at Seattle coordinates for resident visual mapping
+    // Center at Nagpur, India
     this.miniMap = L.map('res-mini-map', {
       zoomControl: false,
-      attributionControl: false
-    }).setView([47.6062, -122.3321], 11);
+      attributionControl: true
+    }).setView([21.1458, 79.0882], 12);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(this.miniMap);
   },
@@ -198,16 +199,17 @@ const ResidentPortal = {
   initIntakeMap() {
     if (this.intakeMap) return;
     
-    // Seattle coords
-    const lat = 47.6062;
-    const lng = -122.3321;
+    // Nagpur, India
+    const lat = 21.1458;
+    const lng = 79.0882;
 
     this.intakeMap = L.map('res-intake-map', {
       zoomControl: false,
-      attributionControl: false
-    }).setView([lat, lng], 13);
+      attributionControl: true
+    }).setView([lat, lng], 12);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(this.intakeMap);
 
@@ -216,32 +218,32 @@ const ResidentPortal = {
     // Update lat/lng inputs on drag
     marker.on('dragend', () => {
       const pos = marker.getLatLng();
-      // Reverse geocode mock
-      document.getElementById('res-form-address').value = `Seattle Subsector, lat: ${pos.lat.toFixed(4)}`;
+      document.getElementById('res-form-address').value = `Nagpur, lat: ${pos.lat.toFixed(4)}, lng: ${pos.lng.toFixed(4)}`;
     });
   },
 
   initAIIntakeMap() {
     if (this.aiIntakeMap) return;
     
-    const lat = 47.6062;
-    const lng = -122.3321;
+    const lat = 21.1458;
+    const lng = 79.0882;
 
     this.aiIntakeMap = L.map('res-ai-intake-map', {
       zoomControl: false,
-      attributionControl: false
-    }).setView([lat, lng], 13);
+      attributionControl: true
+    }).setView([lat, lng], 12);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(this.aiIntakeMap);
     L.marker([lat, lng]).addTo(this.aiIntakeMap);
   },
 
   useCitizenLocation() {
-    const lat = 47.6062;
-    const lng = -122.3321;
-    document.getElementById('res-form-address').value = '123 Pine St, Seattle, WA';
+    const lat = 21.1458;
+    const lng = 79.0882;
+    document.getElementById('res-form-address').value = 'Nagpur, Maharashtra, India';
     if (this.intakeMap) {
       this.intakeMap.setView([lat, lng], 15);
     }
@@ -547,10 +549,11 @@ const ResidentPortal = {
 
     this.portalMap = L.map('res-portal-map', {
       zoomControl: true,
-      attributionControl: false
-    }).setView([47.6062, -122.3321], 12);
+      attributionControl: true
+    }).setView([21.1458, 79.0882], 12);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(this.portalMap);
 
@@ -586,20 +589,26 @@ const ResidentPortal = {
 
     complaints.forEach(c => {
       let color = '#3b82f6';
-      if (c.priority === 'Urgent') color = '#ef4444';
-      else if (c.priority === 'Low') color = '#10b981';
+      if (c.priority === 'CRITICAL' || c.priority === 'HIGH' || c.priority === 'Urgent') color = '#ef4444';
+      else if (c.priority === 'LOW' || c.priority === 'Low') color = '#10b981';
 
-      // Plot
-      const lat = c.lat || 47.6062;
-      const lng = c.lng || -122.3321;
+      // Use MongoDB latitude/longitude fields, fall back to Nagpur center
+      const cLat = c.latitude || c.lat || 21.1458;
+      const cLng = c.longitude || c.lng || 79.0882;
 
-      const m = L.circleMarker([lat, lng], {
+      const m = L.circleMarker([cLat, cLng], {
         radius: 7,
         fillColor: color,
         color: '#ffffff',
         weight: 1.5,
         fillOpacity: 0.9
-      }).addTo(this.portalMap).bindPopup(`<b>${c.id}</b><br/>${c.category}<br/>${c.address}`);
+      }).addTo(this.portalMap).bindPopup(`
+        <div style="font-size:12px; min-width:160px; padding:2px;">
+          <strong style="color:#001334;">${c.category}</strong><br/>
+          <span style="color:#4b5563;">${c.address || c.landmark || c.city || 'Nagpur'}</span><br/>
+          <span style="font-size:10px; color:#6b7280;">Status: ${c.status}</span>
+        </div>
+      `);
       
       this.portalMarkers.push(m);
     });
