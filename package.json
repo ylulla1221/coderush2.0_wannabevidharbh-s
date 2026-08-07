@@ -1,0 +1,14 @@
+{
+  "name": "civicpulse-redressal-hub",
+  "version": "1.0.0",
+  "description": "CivicPulse Municipal Redressal Hub with real SQL database integration and distributed frontend components",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "init-db": "node init_db.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "sqlite3": "^5.1.7"
+  }
+}
