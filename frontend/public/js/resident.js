@@ -276,6 +276,7 @@ const ResidentPortal = {
     const address = document.getElementById('res-form-address').value;
     
     const id = `CR-${Math.floor(1000 + Math.random() * 9000)}`;
+    
 
     const newTicket = {
       id,
@@ -291,19 +292,35 @@ const ResidentPortal = {
     };
 
     try {
-      await window.API.createComplaint(newTicket);
-      window.showToast(`Report logged successfully. Ticket reference: ${id}`);
-      document.getElementById('res-form-category').value = '';
-      document.getElementById('res-form-description').value = '';
-      document.getElementById('res-form-address').value = '';
-      document.getElementById('media-preview-container').classList.add('hidden');
-      document.getElementById('media-upload-label').textContent = 'Click to upload or drag and drop';
-      
-      await this.fetchData();
-      this.switchTab('dashboard');
-    } catch (err) {
-      window.showToast('Failed to insert report.', 'error');
-    }
+  const result = await window.API.createComplaint(newTicket);
+
+  // Duplicate complaint detected
+  if (result.duplicate) {
+    window.showToast(
+      `Duplicate complaint detected! Existing Complaint ID: ${result.existingComplaintId}`,
+      "warning"
+    );
+    return;
+  }
+
+  // Successfully created
+  window.showToast(
+    `Report logged successfully. Ticket reference: ${result.id || id}`
+  );
+
+  document.getElementById('res-form-category').value = '';
+  document.getElementById('res-form-description').value = '';
+  document.getElementById('res-form-address').value = '';
+  document.getElementById('media-preview-container').classList.add('hidden');
+  document.getElementById('media-upload-label').textContent =
+    'Click to upload or drag and drop';
+
+  await this.fetchData();
+  this.switchTab('dashboard');
+
+} catch (err) {
+  window.showToast('Failed to insert report.', 'error');
+}
   },
 
   // Chat State Initialization
@@ -526,8 +543,21 @@ const ResidentPortal = {
     };
 
     try {
-      await window.API.createComplaint(newTicket);
-      window.showToast(`AI Draft successfully submitted! Reference: ${id}`);
+     const result = await window.API.createComplaint(newTicket);
+
+// Duplicate complaint
+if (result.duplicate) {
+  window.showToast(
+    `Duplicate complaint detected! Existing Complaint ID: ${result.existingComplaintId}`,
+    "warning"
+  );
+  return;
+}
+
+// Successfully created
+window.showToast(
+  `AI Draft successfully submitted! Reference: ${result.id || id}`
+);
       
       this.resetAIChat();
 

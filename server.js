@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
+const axios = require("axios");
 
 // Mongoose Models
 const User = require('./models/User');
@@ -18,6 +19,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'frontend', 'public')));
 
 // MongoDB Connection Setup
+
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('Successfully connected to MongoDB Atlas!');
@@ -212,6 +214,46 @@ app.post('/api/complaints', async (req, res) => {
     reporterName, reporterContact, priority, status, title
   } = req.body;
 
+  // ---------------------------
+  // Run AI Pipeline
+  // ---------------------------
+
+  let aiResult;
+  let summary;
+  let analysis;
+  let complaintAI;
+
+  try {
+
+    const response = await axios.post(
+        "http://127.0.0.1:8000/pipeline",
+        {
+            complaint_text: description,
+            location: address
+        }
+    );
+
+    aiResult = response.data;
+    summary = aiResult.summary;
+    analysis = aiResult.analysis;
+    complaintAI = aiResult.complaint;
+
+    console.log("AI Result:");
+    console.log(JSON.stringify(aiResult, null, 2));
+
+  } catch (err) {
+
+    console.error("AI Pipeline Error");
+
+    console.error(err.response?.data || err.message);
+
+    return res.status(500).json({
+        success: false,
+        message: "AI Pipeline failed"
+    });
+
+  }
+
   if (!category || !description || !address) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
@@ -230,24 +272,47 @@ app.post('/api/complaints', async (req, res) => {
     }
   }
 
+  // ---------------------------
+  // Duplicate Detection
+  // ---------------------------
+
+  if (analysis.duplicate.is_duplicate === true) {
+    return res.status(200).json({
+      success: false,
+      duplicate: true,
+      existingComplaintId: analysis.duplicate.matched_complaint_id,
+      similarity: analysis.duplicate.similarity_score,
+      message: "A similar complaint already exists."
+    });
+  }
+
   try {
     const newComplaint = await Complaint.create({
-      title: title || `${category} at ${address}`,
-      category,
+      title: title || `${summary.category} at ${address}`,
+
+      category: summary.category,
+
       description,
-      landmark: address.split(',')[0],
-      city: address.split(',')[1]?.trim() || 'Nagpur',
-      priority: (priority || 'MODERATE').toUpperCase(),
+
+      landmark: req.body.landmark,
+
+      city: req.body.city,
+
+      priority: summary.priority.toUpperCase(),
+
       location: {
-        type: 'Point',
+        type: "Point",
         coordinates: [parseFloat(lng), parseFloat(lat)]
       },
+
       address,
+
       reporter: {
-        name: reporterName || 'Resident',
-        contact: reporterContact || 'contact@municipal.gov'
+        name: reporterName,
+        contact: reporterContact
       },
-      status: status || 'PENDING'
+
+      status: status || "PENDING"
     });
 
     await AuditLog.create({
