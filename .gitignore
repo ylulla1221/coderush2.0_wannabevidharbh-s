@@ -6,3 +6,23 @@ logs/
 *.log
 .DS_Store
 dist/
+# Environment variables
+.env
+.env.*
+
+# Ignore Python virtual environments
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
