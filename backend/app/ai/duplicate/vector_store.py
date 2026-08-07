@@ -184,11 +184,8 @@ def _ensure_collection() -> None:
 
     except VectorStoreError:
         raise
-
     except Exception as exc:
-        raise VectorStoreError(
-            f"Failed to ensure collection '{QDRANT_COLLECTION}': {exc}"
-        ) from exc
+        raise _handle_qdrant_error(exc, f"Failed to ensure collection '{QDRANT_COLLECTION}'") from exc
 
 
 # =============================================================================
@@ -239,11 +236,8 @@ def insert_complaint(
 
     except VectorStoreError:
         raise
-
     except Exception as exc:
-        raise VectorStoreError(
-            f"Failed to insert complaint '{complaint_id}': {exc}"
-        ) from exc
+        raise _handle_qdrant_error(exc, f"Failed to insert complaint '{complaint_id}'") from exc
 
 
 def search_similar(
