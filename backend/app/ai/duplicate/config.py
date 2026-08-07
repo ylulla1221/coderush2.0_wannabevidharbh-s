@@ -48,15 +48,9 @@ EMBEDDING_MODEL: str = os.getenv(
 # QDRANT CONFIGURATION
 # =============================================================================
 
-QDRANT_HOST: str = os.getenv("QDRANT_HOST", "localhost")
-
-QDRANT_PORT: int = int(os.getenv("QDRANT_PORT", "6333"))
-
-QDRANT_COLLECTION: str = os.getenv(
-    "QDRANT_COLLECTION",
-    "civicflow_complaints",
-)
-
+QDRANT_URL = os.getenv("QDRANT_URL")
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "civicflow_complaints")
 # =============================================================================
 # SIMILARITY THRESHOLDS
 # =============================================================================
