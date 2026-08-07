@@ -1,3 +1,4 @@
+// Complaint Model - GeoJSON 2dsphere for spatial queries
 const mongoose = require('mongoose');
 
 const complaintSchema = new mongoose.Schema({
@@ -41,3 +42,4 @@ const complaintSchema = new mongoose.Schema({
 complaintSchema.index({ location: '2dsphere' });
 
 module.exports = mongoose.model('Complaint', complaintSchema);
+
