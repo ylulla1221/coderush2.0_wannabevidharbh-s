@@ -1,0 +1,185 @@
+/* CivicPulse Global Styles & Theme Variables (DESIGN.md) */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
+:root {
+  /* Colors */
+  --primary: #001334;
+  --on-primary: #ffffff;
+  --primary-container: #00265b;
+  --on-primary-container: #5c8eee;
+  
+  --secondary: #006a61;
+  --on-secondary: #ffffff;
+  --secondary-container: #86f2e4;
+  --on-secondary-container: #006f66;
+
+  --background: #fbf8fa;
+  --on-background: #1b1b1d;
+  
+  --surface: #fbf8fa;
+  --on-surface: #1b1b1d;
+  --surface-dim: #dcd9db;
+  --surface-bright: #fbf8fa;
+  
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f5f3f4;
+  --surface-container: #f0edef;
+  --surface-container-high: #eae7e9;
+  --surface-container-highest: #e4e2e3;
+  --on-surface-variant: #45474c;
+  
+  --outline: #75777d;
+  --outline-variant: #c5c6cd;
+  
+  --error: #ba1a1a;
+  --on-error: #ffffff;
+  --error-container: #ffdad6;
+  --on-error-container: #93000a;
+  
+  --primary-fixed: #d8e2ff;
+  --primary-fixed-dim: #aec6ff;
+  --on-primary-fixed: #001a42;
+  
+  --secondary-fixed: #89f5e7;
+  --secondary-fixed-dim: #6bd8cb;
+  --on-secondary-fixed: #00201d;
+
+  --tertiary: #111516;
+  --on-tertiary: #ffffff;
+  --tertiary-container: #26292b;
+  --on-tertiary-container: #8d9092;
+
+  /* Typography Scale */
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Menlo', 'Consolas', monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--background);
+  color: var(--on-background);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--outline-variant);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--outline);
+}
+
+/* Transitions */
+.tab-content {
+  transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+.tab-content.hidden {
+  display: none;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+/* PII Sensitive Data Masking */
+.pii-masked {
+  filter: blur(4.5px);
+  position: relative;
+  user-select: none;
+  pointer-events: none;
+  transition: filter 0.2s ease;
+}
+.pii-masked.revealed {
+  filter: none;
+  user-select: text;
+  pointer-events: auto;
+}
+
+/* Map Containers */
+.leaflet-container {
+  font-family: var(--font-sans) !important;
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+}
+
+/* Stepper Completed State */
+.step-completed {
+  color: var(--secondary) !important;
+  border-color: var(--secondary) !important;
+}
+.step-active {
+  color: var(--on-primary-container) !important;
+  border-color: var(--on-primary-container) !important;
+}
+
+/* Left Sidebar Fixed layout overrides */
+aside.sidebar {
+  width: 280px;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background-color: var(--surface-container-lowest);
+  border-right: 1px solid var(--outline-variant);
+  z-index: 50;
+}
+
+main.content-area {
+  margin-left: 280px;
+  min-height: 100vh;
+  padding: 2rem;
+  background-color: var(--background);
+}
+
+@media (max-width: 768px) {
+  aside.sidebar {
+    width: 100%;
+    position: relative;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--outline-variant);
+  }
+  main.content-area {
+    margin-left: 0;
+    padding: 1rem;
+  }
+}
+
+/* Resident Layout Adjustments */
+body.resident-layout #officer-sidebar,
+body.resident-layout #top-nav-bar {
+  display: none !important;
+}
+
+body.resident-layout #resident-header {
+  display: block !important;
+}
+
+body.resident-layout main.content-area {
+  margin-left: 0 !important;
+  max-width: 1280px;
+  width: 100%;
+  margin-right: auto;
+  margin-left: auto;
+  padding: 2rem 1.5rem;
+}
+
+@media (max-width: 640px) {
+  body.resident-layout main.content-area {
+    padding: 1rem 0.75rem;
+  }
+}
+
+/* Custom map icon styling */
+.custom-div-icon {
+  background: transparent !important;
+  border: none !important;
+}
+

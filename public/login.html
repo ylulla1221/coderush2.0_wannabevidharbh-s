@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>CivicPulse - Access Control Portal</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #fbf8fa;
+      color: #1b1b1d;
+    }
+    .auth-card {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(16px);
+      border: 1px solid #c5c6cd;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 bg-gradient-to-tr from-[#f5f3f4] to-[#eae7e9]">
+
+  <div class="w-full max-w-md space-y-6">
+    <!-- Brand Logo header -->
+    <div class="text-center space-y-2">
+      <div class="inline-flex items-center gap-2 text-primary">
+        <span class="material-symbols-outlined text-[#006a61] text-4xl font-bold">shield_heart</span>
+        <span class="font-sans text-2xl font-bold tracking-tight text-[#001334]">CivicPulse</span>
+      </div>
+      <p class="text-xs text-[#45474c] font-medium uppercase tracking-widest">Municipal Redressal &amp; Governance Hub</p>
+    </div>
+
+    <!-- Main Auth Card -->
+    <div class="auth-card p-6 space-y-6" id="auth-container">
+      
+      <!-- Role Tabs selection -->
+      <div class="flex border-b border-[#c5c6cd] text-xs font-semibold" id="auth-tabs">
+        <button onclick="switchTab('resident')" id="tab-btn-resident" class="flex-1 pb-2 text-center border-b-2 border-[#006a61] text-[#006a61]">Citizen Portal</button>
+        <button onclick="switchTab('officer')" id="tab-btn-officer" class="flex-1 pb-2 text-center border-b-2 border-transparent text-[#45474c] hover:text-[#001334]">Municipal Officer</button>
+      </div>
+
+      <!-- Alert messages -->
+      <div id="auth-alert" class="hidden p-3 rounded-lg border text-xs leading-normal"></div>
+
+      <!-- Citizen Login Form -->
+      <form id="form-resident-login" onsubmit="handleLogin(event, 'resident')" class="space-y-4 text-xs">
+        <h3 class="text-sm font-bold text-[#001334] mb-2 flex items-center gap-1"><span class="material-symbols-outlined text-base">login</span> Citizen Sign In</h3>
+        <div>
+          <label class="block font-semibold text-[#001334] mb-1">Email Address</label>
+          <input type="email" id="res-login-email" required placeholder="name@domain.com" class="w-full p-2 border border-[#c5c6cd] rounded bg-white text-xs focus:ring-1 focus:ring-[#006a61] focus:border-[#001334]"/>
+        </div>
+        <div>
+          <label class="block font-semibold text-[#001334] mb-1">Account Password</label>
+          <input type="password" id="res-login-pass" required placeholder="••••••••" class="w-full p-2 border border-[#c5c6cd] rounded bg-white text-xs focus:ring-1 focus:ring-[#006a61] focus:border-[#001334]"/>
+        </div>
+        <button type="submit" class="w-full bg-[#006a61] hover:bg-[#00524b] text-white font-bold py-2 rounded transition-all active:scale-95 shadow-sm">
+          Sign In
+        </button>
+        <p class="text-center text-[11px] text-[#45474c] pt-2">
+          New to CivicPulse? <a href="#" onclick="toggleSignupForm(true)" class="text-[#006a61] font-semibold hover:underline">Register Account</a>
+        </p>
+      </form>
+
+      <!-- Citizen Register/Signup Form -->
+      <form id="form-resident-signup" onsubmit="handleSignup(event)" class="hidden space-y-4 text-xs">
+        <h3 class="text-sm font-bold text-[#001334] mb-2 flex items-center gap-1"><span class="material-symbols-outlined text-base">person_add</span> Create Citizen Account</h3>
+        <div>
+          <label class="block font-semibold text-[#001334] mb-1">Full Name</label>
+          <input type="text" id="res-signup-name" required placeholder="e.g. Ramesh Kumar" class="w-full p-2 border border-[#c5c6cd] rounded bg-white text-xs focus:ring-1 focus:ring-[#006a61] focus:border-[#001334]"/>
+        </div>
+        <div>
+          <label class="block font-semibold text-[#001334] mb-1">Email Address</label>
+          <input type="email" id="res-signup-email" required placeholder="ramesh.k@gmail.com" class="w-full p-2 border border-[#c5c6cd] rounded bg-white text-xs focus:ring-1 focus:ring-[#006a61] focus:border-[#001334]"/>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-[#001334] mb-1">Password</label>
+            <input type="password" id="res-signup-pass" required placeholder="••••••••" class="w-full p-2 border border-[#c5c6cd] rounded bg-white text-xs focus:ring-1 focus:ring-[#006a61] focus:border-[#001334]"/>
+          </div>
+          <div>
+            <label class="block font-semibold text-[#001334] mb-1">Ward Location</label>
+            <input type="text" id="res-signup-ward" value="Ward 12" required class="w-full p-2 border border-[#c5c6cd] rounded bg-white text-xs focus:ring-1 focus:ring-[#006a61] focus:border-[#001334]"/>
+          </div>
+        </div>
+        <button type="submit" class="w-full bg-[#006a61] hover:bg-[#00524b] text-white font-bold py-2 rounded transition-all active:scale-95 shadow-sm">
+          Register Citizen Account
+        </button>
+        <p class="text-center text-[11px] text-[#45474c] pt-2">
+          Already registered? <a href="#" onclick="toggleSignupForm(false)" class="text-[#006a61] font-semibold hover:underline">Sign In here</a>
+        </p>
+      </form>
+
+      <!-- Officer Login Form -->
+      <form id="form-officer-login" onsubmit="handleLogin(event, 'officer')" class="hidden space-y-4 text-xs">
+        <h3 class="text-sm font-bold text-[#001334] mb-2 flex items-center gap-1"><span class="material-symbols-outlined text-base">admin_panel_settings</span> Officer Sign In</h3>
+        <div>
+          <label class="block font-semibold text-[#001334] mb-1">Officer Login ID / Email</label>
+          <input type="email" id="off-login-email" required placeholder="aee.ward12@civicpulse.gov" class="w-full p-2 border border-[#c5c6cd] rounded bg-white text-xs focus:ring-1 focus:ring-[#006a61] focus:border-[#001334]"/>
+        </div>
+        <div>
+          <label class="block font-semibold text-[#001334] mb-1">Access Credentials Key (Password)</label>
+          <input type="password" id="off-login-pass" required placeholder="••••••••" class="w-full p-2 border border-[#c5c6cd] rounded bg-white text-xs focus:ring-1 focus:ring-[#006a61] focus:border-[#001334]"/>
+        </div>
+        <button type="submit" class="w-full bg-[#001334] hover:bg-[#00265b] text-white font-bold py-2 rounded transition-all active:scale-95 shadow-sm">
+          Authorize Officer Credentials
+        </button>
+        <div class="bg-[#f0edef] p-3 rounded text-[10px] text-[#45474c] border border-[#c5c6cd]">
+          <strong>Default Demos:</strong><br/>
+          Operator: <code>operator_admin@civicpulse.gov</code> (pass: <code>Password123!</code>)<br/>
+          Officer: <code>aee.ward12@civicpulse.gov</code> (pass: <code>opsmanager2026</code>)
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <script>
+    let activeTab = 'resident';
+    let isSignupMode = false;
+
+    function switchTab(role) {
+      activeTab = role;
+      isSignupMode = false;
+
+      const resBtn = document.getElementById('tab-btn-resident');
+      const offBtn = document.getElementById('tab-btn-officer');
+      const resForm = document.getElementById('form-resident-login');
+      const resSignup = document.getElementById('form-resident-signup');
+      const offForm = document.getElementById('form-officer-login');
+      const alertBox = document.getElementById('auth-alert');
+
+      alertBox.classList.add('hidden');
+
+      if (role === 'resident') {
+        resBtn.className = "flex-1 pb-2 text-center border-b-2 border-[#006a61] text-[#006a61]";
+        offBtn.className = "flex-1 pb-2 text-center border-b-2 border-transparent text-[#45474c] hover:text-[#001334]";
+        resForm.classList.remove('hidden');
+        resSignup.classList.add('hidden');
+        offForm.classList.add('hidden');
+      } else {
+        resBtn.className = "flex-1 pb-2 text-center border-b-2 border-transparent text-[#45474c] hover:text-[#006a61]";
+        offBtn.className = "flex-1 pb-2 text-center border-b-2 border-[#001334] text-[#001334]";
+        resForm.classList.add('hidden');
+        resSignup.classList.add('hidden');
+        offForm.classList.remove('hidden');
+      }
+    }
+
+    function toggleSignupForm(toSignup) {
+      isSignupMode = toSignup;
+      const resForm = document.getElementById('form-resident-login');
+      const resSignup = document.getElementById('form-resident-signup');
+      const alertBox = document.getElementById('auth-alert');
+
+      alertBox.classList.add('hidden');
+
+      if (toSignup) {
+        resForm.classList.add('hidden');
+        resSignup.classList.remove('hidden');
+      } else {
+        resForm.classList.remove('hidden');
+        resSignup.classList.add('hidden');
+      }
+    }
+
+    function showAlert(msg, isSuccess = false) {
+      const alertBox = document.getElementById('auth-alert');
+      alertBox.classList.remove('hidden');
+      alertBox.textContent = msg;
+
+      if (isSuccess) {
+        alertBox.className = "p-3 rounded-lg border text-xs leading-normal bg-emerald-50 border-emerald-300 text-emerald-950";
+      } else {
+        alertBox.className = "p-3 rounded-lg border text-xs leading-normal bg-red-50 border-red-300 text-red-950";
+      }
+    }
+
+    async function handleLogin(e, role) {
+      e.preventDefault();
+      
+      const email = document.getElementById(role === 'resident' ? 'res-login-email' : 'off-login-email').value.trim();
+      const password = document.getElementById(role === 'resident' ? 'res-login-pass' : 'off-login-pass').value;
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Authentication failed');
+        }
+
+        // Store user in session
+        localStorage.setItem('civic_user', JSON.stringify(data.user));
+        showAlert("Success! Redirecting you...", true);
+        
+        setTimeout(() => {
+          window.location.href = '/index.html';
+        }, 1000);
+
+      } catch (err) {
+        showAlert(err.message);
+      }
+    }
+
+    async function handleSignup(e) {
+      e.preventDefault();
+
+      const name = document.getElementById('res-signup-name').value.trim();
+      const email = document.getElementById('res-signup-email').value.trim();
+      const password = document.getElementById('res-signup-pass').value;
+      const ward = document.getElementById('res-signup-ward').value.trim();
+
+      try {
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password, ward })
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Registration failed');
+        }
+
+        // Auto log in on successful registration
+        localStorage.setItem('civic_user', JSON.stringify(data.user));
+        showAlert("Registration completed! Logging you in...", true);
+
+        setTimeout(() => {
+          window.location.href = '/index.html';
+        }, 1200);
+
+      } catch (err) {
+        showAlert(err.message);
+      }
+    }
+  </script>
+</body>
+</html>
