@@ -67,6 +67,45 @@ const API = {
 
   async getStats() {
     return this.request('/api/stats');
+  },
+
+  // ── Phase 1: Lifecycle Endpoints ─────────────────────────────────────────
+
+  async getComplaintStatus(id) {
+    return this.request(`/api/complaints/${id}/status`);
+  },
+
+  async getTimeline(id) {
+    return this.request(`/api/complaints/${id}/timeline`);
+  },
+
+  async assignComplaint(id, officerName, officerId) {
+    return this.request(`/api/complaints/${id}/assign`, 'POST', { officerName, officerId });
+  },
+
+  async startWork(id) {
+    return this.request(`/api/complaints/${id}/start`, 'POST', {});
+  },
+
+  async resolveComplaint(id, resolutionNotes) {
+    return this.request(`/api/complaints/${id}/resolve`, 'POST', { resolutionNotes });
+  },
+
+  async escalateComplaint(id, reason) {
+    return this.request(`/api/complaints/${id}/escalate`, 'POST', { reason });
+  },
+
+  async trackByReference(ref) {
+    return this.request(`/api/track/${encodeURIComponent(ref)}`);
+  },
+
+  async getNotifications(complaintId) {
+    const qs = complaintId ? `?complaintId=${complaintId}` : '';
+    return this.request(`/api/notifications${qs}`);
+  },
+
+  async runEscalationCheck() {
+    return this.request('/api/admin/escalation-check', 'POST', {});
   }
 };
 

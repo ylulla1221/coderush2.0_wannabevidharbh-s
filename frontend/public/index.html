@@ -70,6 +70,7 @@
         <button id="res-nav-complaints" onclick="switchResidentTab('complaints')" class="text-on-surface-variant hover:text-primary font-medium text-sm h-full px-1 border-b-2 border-transparent flex items-center">Complaints</button>
         <button id="res-nav-map" onclick="switchResidentTab('map')" class="text-on-surface-variant hover:text-primary font-medium text-sm h-full px-1 border-b-2 border-transparent flex items-center">Map View</button>
         <button id="res-nav-analytics" onclick="switchResidentTab('analytics')" class="text-on-surface-variant hover:text-primary font-medium text-sm h-full px-1 border-b-2 border-transparent flex items-center">Analytics</button>
+        <button id="res-nav-tracker" onclick="switchResidentTab('tracker')" class="text-on-surface-variant hover:text-primary font-medium text-sm h-full px-1 border-b-2 border-transparent flex items-center">Track Issue</button>
       </div>
       <!-- Right actions -->
       <div class="flex items-center gap-4">
@@ -541,15 +542,9 @@
         </div>
         <div class="lg:col-span-4 bg-white p-6 rounded-xl border border-outline-variant shadow-sm space-y-4">
           <h4 class="font-sans text-xs font-bold text-primary uppercase tracking-wider border-b border-outline-variant pb-2">Top Neighborhoods</h4>
-          <div class="space-y-4 text-xs pt-1">
-            <div>
-              <div class="flex justify-between mb-1 font-semibold text-primary"><span>Downtown</span><span class="font-mono font-bold text-primary">342</span></div>
-              <div class="w-full bg-surface-container rounded-full h-1.5"><div class="bg-secondary h-1.5 rounded-full" style="width: 90%"></div></div>
-            </div>
-            <div>
-              <div class="flex justify-between mb-1 font-semibold text-primary"><span>Westside</span><span class="font-mono font-bold text-primary">215</span></div>
-              <div class="w-full bg-surface-container rounded-full h-1.5"><div class="bg-secondary h-1.5 rounded-full" style="width: 60%"></div></div>
-            </div>
+          <div class="space-y-4 text-xs pt-1" id="reports-neighborhoods-list">
+            <!-- Populated dynamically by reports.js -->
+            <p class="text-outline text-[10px] italic">Loading…</p>
           </div>
         </div>
       </div>
@@ -566,6 +561,21 @@
               <div><strong class="block text-[11px] font-bold">Spike in Pothole Reports</strong><p class="text-[10px] leading-relaxed mt-0.5 text-red-900">District 4 showing 300% increase in last 48hrs.</p></div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm flex flex-col h-[280px]">
+          <h4 class="font-sans text-xs font-bold text-primary uppercase tracking-wider mb-2">Complaints by Ward</h4>
+          <div class="flex-grow w-full"><canvas id="reportsWardChart"></canvas></div>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm flex flex-col h-[280px]">
+          <h4 class="font-sans text-xs font-bold text-primary uppercase tracking-wider mb-2">Complaints by Category</h4>
+          <div class="flex-grow w-full"><canvas id="reportsCategoryChart"></canvas></div>
+        </div>
+        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm flex flex-col h-[280px]">
+          <h4 class="font-sans text-xs font-bold text-primary uppercase tracking-wider mb-2">Complaints by Department</h4>
+          <div class="flex-grow w-full"><canvas id="reportsDepartmentChart"></canvas></div>
         </div>
       </div>
     </div>
@@ -634,8 +644,8 @@
           </div>
           <div>
             <span class="text-xs text-on-surface-variant font-semibold block uppercase">Active Complaints</span>
-            <span class="text-2xl font-bold text-primary font-mono block">3</span>
-            <span class="text-[10px] text-outline block">2 under review, 1 scheduled</span>
+            <span id="res-stat-active" class="text-2xl font-bold text-primary font-mono block">—</span>
+            <span id="res-stat-active-subtitle" class="text-[10px] text-outline block">Loading…</span>
           </div>
         </div>
         <!-- Resolved issues -->
@@ -645,7 +655,7 @@
           </div>
           <div>
             <span class="text-xs text-on-surface-variant font-semibold block uppercase">Resolved Issues</span>
-            <span class="text-2xl font-bold text-primary font-mono block">12</span>
+            <span id="res-stat-resolved" class="text-2xl font-bold text-primary font-mono block">—</span>
             <span class="text-[10px] text-outline block">In the last 12 months</span>
           </div>
         </div>
@@ -1041,6 +1051,46 @@
       </div>
     </div>
 
+    <!-- ==================== RESIDENT TAB: TRACKER ==================== -->
+    <div id="tab-res-tracker" class="tab-content hidden space-y-6">
+      <div>
+        <h1 class="font-sans text-3xl font-bold tracking-tight text-primary">Track Your Redressal Request</h1>
+        <p class="font-sans text-sm text-on-surface-variant">Enter your reference number below to view live updates, SLA tracking, and audit timelines.</p>
+      </div>
+
+      <div class="bg-white p-6 rounded-xl border border-outline-variant shadow-sm max-w-3xl space-y-4">
+        <div>
+          <label class="block font-semibold text-primary mb-1">Reference Number</label>
+          <div class="flex gap-2">
+            <div class="relative flex-grow">
+              <span class="material-symbols-outlined absolute left-3 top-2.5 text-outline text-base">tag</span>
+              <input type="text" id="res-tracker-input" placeholder="E.g., CR-1234 or INC-8921" class="w-full pl-9 pr-3 py-2 border border-outline-variant rounded bg-surface text-xs focus:ring-1 focus:ring-secondary focus:border-primary font-mono font-bold text-primary uppercase"/>
+            </div>
+            <button onclick="ResidentTracker.lookup(document.getElementById('res-tracker-input').value)" class="bg-secondary hover:bg-[#00524b] text-white px-5 py-2 rounded font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95">
+              <span class="material-symbols-outlined text-sm">search</span> Track
+            </button>
+          </div>
+        </div>
+        
+        <!-- Results Container (populated by lifecycle.js) -->
+        <div id="res-tracker-result" class="hidden border-t border-outline-variant pt-4 mt-4">
+        </div>
+      </div>
+      
+      <script>
+        // Auto-fill from localStorage if available
+        document.addEventListener('DOMContentLoaded', () => {
+          setTimeout(() => {
+            const lastRef = localStorage.getItem('lastResidentRef');
+            if (lastRef) {
+              const input = document.getElementById('res-tracker-input');
+              if (input) input.value = lastRef;
+            }
+          }, 1000);
+        });
+      </script>
+    </div>
+
   </main>
 
   <!-- ==================================================================== -->
@@ -1201,6 +1251,7 @@
   <!-- ==================== FRONTEND JS MODULE LOADERS ==================== -->
   <script src="/js/api.js"></script>
   <script src="/js/app.js"></script>
+  <script src="/js/lifecycle.js"></script>
   <script src="/js/overview.js"></script>
   <script src="/js/active_tasks.js"></script>
   <script src="/js/duplicates.js"></script>

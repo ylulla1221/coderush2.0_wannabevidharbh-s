@@ -35,7 +35,7 @@ const ResidentPortal = {
     this.currentTab = tabId;
 
     // Toggle active underlines in top header
-    const links = ['dashboard', 'complaints', 'map', 'analytics'];
+    const links = ['dashboard', 'complaints', 'map', 'analytics', 'tracker'];
     links.forEach(l => {
       const btn = document.getElementById(`res-nav-${l}`);
       if (btn) {
@@ -61,6 +61,7 @@ const ResidentPortal = {
     if (tabId === 'dashboard') {
       this.initMiniMap();
       this.renderTimeline();
+      this.renderResidentStats();
     } else if (tabId === 'complaints') {
       this.toggleIntakeMode(this.currentIntakeMode);
     } else if (tabId === 'map') {
@@ -69,6 +70,21 @@ const ResidentPortal = {
     } else if (tabId === 'analytics') {
       this.initCharts();
     }
+  },
+
+  renderResidentStats() {
+    const complaints = window.appState.cachedComplaints || [];
+    const active = complaints.filter(c => c.status !== 'RESOLVED' && c.lifecycleStatus !== 'RESOLVED').length;
+    const resolved = complaints.filter(c => c.status === 'RESOLVED' || c.lifecycleStatus === 'RESOLVED').length;
+    const inProgress = complaints.filter(c => c.lifecycleStatus === 'IN_PROGRESS').length;
+    const escalated = complaints.filter(c => c.lifecycleStatus === 'ESCALATED').length;
+
+    const elActive = document.getElementById('res-stat-active');
+    const elResolved = document.getElementById('res-stat-resolved');
+    const elSubtitle = document.getElementById('res-stat-active-subtitle');
+    if (elActive) elActive.textContent = active;
+    if (elResolved) elResolved.textContent = resolved;
+    if (elSubtitle) elSubtitle.textContent = `${inProgress} in progress, ${escalated} escalated`;
   },
 
   // 1. Citizen Dashboard
@@ -93,81 +109,55 @@ const ResidentPortal = {
   },
 
   renderTimeline() {
-    // Standard timeline matches Screenshot 1, but we append newly created citizen reports
     const container = document.getElementById('res-action-timeline');
     if (!container) return;
 
-    const citizenComplaints = window.appState.cachedComplaints.filter(c => c.reporterName === window.appState.currentUser.name || c.id.startsWith('CR-'));
-    
-    let extraTimelineHtml = '';
-    citizenComplaints.forEach((c, idx) => {
-      let priorityColor = 'bg-amber-100 text-amber-800 border-amber-200';
-      if (c.priority === 'Urgent') priorityColor = 'bg-red-100 text-red-800 border-red-200';
-      else if (c.priority === 'Low') priorityColor = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+    const complaints = window.appState.cachedComplaints || [];
 
+    if (complaints.length === 0) {
+      container.innerHTML = `<div class="text-xs text-on-surface-variant italic py-4">No complaints recorded yet.</div>`;
+      return;
+    }
+
+    container.innerHTML = complaints.slice(0, 8).map(c => {
+      let priorityColor = 'bg-amber-100 text-amber-800';
+      const p = (c.priority || '').toUpperCase();
+      if (p === 'CRITICAL' || p === 'HIGH' || p === 'URGENT') priorityColor = 'bg-red-100 text-red-800';
+      else if (p === 'LOW') priorityColor = 'bg-emerald-100 text-emerald-800';
+
+      const ls = c.lifecycleStatus || c.status || 'SUBMITTED';
       let icon = 'mail';
-      if (c.status === 'Assigned') icon = 'engineering';
-      else if (c.status === 'Resolved') icon = 'check_circle';
+      let iconBg = 'bg-slate-400';
+      if (ls === 'IN_PROGRESS') { icon = 'engineering'; iconBg = 'bg-amber-500'; }
+      else if (ls === 'RESOLVED') { icon = 'check_circle'; iconBg = 'bg-emerald-600'; }
+      else if (ls === 'ASSIGNED' || ls === 'ROUTED') { icon = 'person_add'; iconBg = 'bg-blue-600'; }
+      else if (ls === 'ESCALATED') { icon = 'warning'; iconBg = 'bg-red-600'; }
+      else { icon = 'mail'; iconBg = 'bg-secondary'; }
 
-      extraTimelineHtml = `
+      const statusLabel = ls.replace(/_/g, ' ');
+      const ref = c.referenceNumber || c.id;
+      const dateStr = c.date || '';
+
+      return `
         <div class="relative">
-          <span class="absolute -left-[41px] top-0.5 bg-secondary text-white w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow">
+          <span class="absolute -left-[41px] top-0.5 ${iconBg} text-white w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow">
             <span class="material-symbols-outlined text-xs">${icon}</span>
           </span>
           <div class="bg-white p-4 rounded-xl border border-outline-variant max-w-2xl space-y-1">
             <div class="flex justify-between items-center text-[10px]">
               <span class="font-bold px-2 py-0.5 rounded uppercase ${priorityColor}">${c.priority}</span>
-              <span class="text-outline font-mono">Today, Just Now</span>
+              <span class="text-outline font-mono">${dateStr}</span>
             </div>
-            <h4 class="font-sans font-bold text-sm text-primary">Report Status: ${c.status}</h4>
-            <p class="text-xs text-on-surface-variant">${c.category} - ${c.description}</p>
+            <h4 class="font-sans font-bold text-sm text-primary">${c.category} — ${statusLabel}</h4>
+            <p class="text-xs text-on-surface-variant line-clamp-2">${c.description}</p>
             <div class="text-[10px] text-outline flex items-center gap-3 pt-1">
               <span>📍 ${c.address}</span>
-              <span>Ref ID: <span class="font-mono">${c.id}</span></span>
+              <span>Ref: <span class="font-mono">${ref}</span></span>
             </div>
           </div>
         </div>
-      ` + extraTimelineHtml;
-    });
-
-    container.innerHTML = extraTimelineHtml + `
-      <!-- Timeline Item 1 -->
-      <div class="relative">
-        <span class="absolute -left-[41px] top-0.5 bg-secondary text-white w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow">
-          <span class="material-symbols-outlined text-xs">engineering</span>
-        </span>
-        <div class="bg-white p-4 rounded-xl border border-outline-variant max-w-2xl space-y-1">
-          <div class="flex justify-between items-center text-[10px]">
-            <span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded uppercase">Moderate</span>
-            <span class="text-outline font-mono">Today, 09:45 AM</span>
-          </div>
-          <h4 class="font-sans font-bold text-sm text-primary">Pothole Repair Scheduled</h4>
-          <p class="text-xs text-on-surface-variant">Assigned to Crew Beta. Estimated completion by EOD.</p>
-          <div class="text-[10px] text-outline flex items-center gap-3 pt-1">
-            <span>📍 1240 Main St, District 4</span>
-            <span>Ref ID: <span class="font-mono">CP-8921</span></span>
-          </div>
-        </div>
-      </div>
-      <!-- Timeline Item 2 -->
-      <div class="relative">
-        <span class="absolute -left-[41px] top-0.5 bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow">
-          <span class="material-symbols-outlined text-xs">visibility</span>
-        </span>
-        <div class="bg-white p-4 rounded-xl border border-outline-variant max-w-2xl space-y-1">
-          <div class="flex justify-between items-center text-[10px]">
-            <span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded uppercase">Low</span>
-            <span class="text-outline font-mono">Yesterday, 14:30 PM</span>
-          </div>
-          <h4 class="font-sans font-bold text-sm text-primary">Inspection Completed</h4>
-          <p class="text-xs text-on-surface-variant">Streetlight outage verified by field agent. Parts ordered.</p>
-          <div class="text-[10px] text-outline flex items-center gap-3 pt-1">
-            <span>📍 89 Park Ave, District 2</span>
-            <span>Ref ID: <span class="font-mono">CP-4731</span></span>
-          </div>
-        </div>
-      </div>
-    `;
+      `;
+    }).join('');
   },
 
   // 2. Citizen Form Tab
@@ -292,35 +282,32 @@ const ResidentPortal = {
     };
 
     try {
-  const result = await window.API.createComplaint(newTicket);
+      const result = await window.API.createComplaint(newTicket);
 
-  // Duplicate complaint detected
-  if (result.duplicate) {
-    window.showToast(
-      `Duplicate complaint detected! Existing Complaint ID: ${result.existingComplaintId}`,
-      "warning"
-    );
-    return;
-  }
+      // Duplicate complaint detected
+      if (result.duplicate) {
+        window.showToast(`Duplicate complaint detected! Existing Complaint ID: ${result.existingComplaintId}`, "warning");
+        return;
+      }
 
-  // Successfully created
-  window.showToast(
-    `Report logged successfully. Ticket reference: ${result.id || id}`
-  );
+      const ref = result.referenceNumber || result.id || id;
+      localStorage.setItem('lastResidentRef', ref);
 
-  document.getElementById('res-form-category').value = '';
-  document.getElementById('res-form-description').value = '';
-  document.getElementById('res-form-address').value = '';
-  document.getElementById('media-preview-container').classList.add('hidden');
-  document.getElementById('media-upload-label').textContent =
-    'Click to upload or drag and drop';
+      // Successfully created
+      window.showToast(`Report logged successfully. Ticket reference: ${ref}`, 'success');
 
-  await this.fetchData();
-  this.switchTab('dashboard');
+      document.getElementById('res-form-category').value = '';
+      document.getElementById('res-form-description').value = '';
+      document.getElementById('res-form-address').value = '';
+      document.getElementById('media-preview-container').classList.add('hidden');
+      document.getElementById('media-upload-label').textContent = 'Click to upload or drag and drop';
 
-} catch (err) {
-  window.showToast('Failed to insert report.', 'error');
-}
+      await this.fetchData();
+      this.switchTab('dashboard');
+
+    } catch (err) {
+      window.showToast('Failed to insert report.', 'error');
+    }
   },
 
   // Chat State Initialization
@@ -543,24 +530,21 @@ const ResidentPortal = {
     };
 
     try {
-     const result = await window.API.createComplaint(newTicket);
+      const result = await window.API.createComplaint(newTicket);
 
-// Duplicate complaint
-if (result.duplicate) {
-  window.showToast(
-    `Duplicate complaint detected! Existing Complaint ID: ${result.existingComplaintId}`,
-    "warning"
-  );
-  return;
-}
+      // Duplicate complaint
+      if (result.duplicate) {
+        window.showToast(`Duplicate complaint detected! Existing Complaint ID: ${result.existingComplaintId}`, "warning");
+        return;
+      }
 
-// Successfully created
-window.showToast(
-  `AI Draft successfully submitted! Reference: ${result.id || id}`
-);
+      const ref = result.referenceNumber || result.id || id;
+      localStorage.setItem('lastResidentRef', ref);
+
+      // Successfully created
+      window.showToast(`AI Draft successfully submitted! Reference: ${ref}`, 'success');
       
       this.resetAIChat();
-
       await this.fetchData();
       this.switchTab('dashboard');
     } catch (err) {

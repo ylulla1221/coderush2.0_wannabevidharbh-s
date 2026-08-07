@@ -50,17 +50,37 @@ const IntakeForm = {
     };
 
     try {
-      await window.API.createComplaint(newTicket);
-      window.showToast(`Complaint ${id} successfully logged in SQL Database!`, 'success');
-      this.closeModal();
+      const result = await window.API.createComplaint(newTicket);
+      
+      if (result && result.duplicate) {
+        window.showToast(`Duplicate complaint detected! Existing Complaint ID: ${result.existingComplaintId}`, 'warning');
+        return;
+      }
 
-      // Refresh overview data
-      if (window.appState.currentTab === 'dashboard') {
-        window.OverviewTab.init();
-      } else if (window.appState.currentTab === 'active-tasks') {
-        window.ActiveTasksTab.init();
+      if (result && (result.success || result.referenceNumber || result.id)) {
+        const ref = result.referenceNumber || result.id || id;
+        window.showToast(`Complaint ${ref} successfully logged!`, 'success');
+        this.closeModal();
+
+        // Refresh overview data in a protective try-catch block
+        try {
+          if (window.appState.currentTab === 'dashboard') {
+            if (window.OverviewTab && typeof window.OverviewTab.init === 'function') {
+              await window.OverviewTab.init();
+            }
+          } else if (window.appState.currentTab === 'active-tasks') {
+            if (window.ActiveTasksTab && typeof window.ActiveTasksTab.init === 'function') {
+              await window.ActiveTasksTab.init();
+            }
+          }
+        } catch (refreshErr) {
+          console.error('Error refreshing data after submission:', refreshErr);
+        }
+      } else {
+        window.showToast(result?.message || 'Failed to insert complaint into database.', 'error');
       }
     } catch (err) {
+      console.error('Complaint submission failed:', err);
       window.showToast('Failed to insert complaint into database.', 'error');
     }
   },

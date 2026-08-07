@@ -27,6 +27,16 @@ const OverviewTab = {
 
     document.getElementById('stat-total-active').textContent = stats.totalActive || 0;
     document.getElementById('stat-urgent-queue').textContent = stats.urgentQueue || 0;
+
+    // Phase 1: Extended stat cards
+    const elResolved  = document.getElementById('stat-resolved');
+    const elEscalated = document.getElementById('stat-escalated');
+    const elBreached  = document.getElementById('stat-sla-breached');
+    const elCritical  = document.getElementById('stat-critical');
+    if (elResolved)  elResolved.textContent  = stats.resolved  || 0;
+    if (elEscalated) elEscalated.textContent = stats.escalated || 0;
+    if (elBreached)  elBreached.textContent  = stats.slaBreachedCount || 0;
+    if (elCritical)  elCritical.textContent  = stats.critical  || stats.urgentQueue || 0;
     
     // Officer Availability: calculated based on unassigned vs assigned ratio, or direct value
     const availability = stats.totalCrews > 0 
@@ -206,6 +216,11 @@ const OverviewTab = {
 
     // Show details modal
     document.getElementById('details-modal').classList.remove('hidden');
+
+    // Phase 1: Render lifecycle + AI panel below existing fields
+    if (window.LifecyclePanel) {
+      window.LifecyclePanel.render(c.id, c);
+    }
   },
 
   assignCrewDirectly(id) {

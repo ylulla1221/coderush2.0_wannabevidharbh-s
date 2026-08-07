@@ -106,15 +106,24 @@ const MapViewTab = {
         const distance = mapCenter.distanceTo(markerLatLng);
 
         if (distance < 5000 || !this.isSplitGrid) {
+          // Calculate SLA Badge
+          let slaBadge = '';
+          if (c.sla?.status === 'BREACHED') slaBadge = '<span class="bg-red-100 text-red-700 px-1 py-0.5 rounded ml-1">SLA BREACHED</span>';
+          else if (c.sla?.status === 'WARNING') slaBadge = '<span class="bg-amber-100 text-amber-700 px-1 py-0.5 rounded ml-1">SLA WARNING</span>';
+
           L.marker([cLat, cLng], { icon: customIcon })
             .addTo(g)
             .bindPopup(`
-              <div class="text-xs space-y-1">
-                <span class="font-bold text-primary uppercase block">${c.id || c._id || ''}</span>
+              <div class="text-xs space-y-1" style="min-width:180px">
+                <span class="font-bold text-primary uppercase block">${c.referenceNumber || c.id || ''} ${slaBadge}</span>
                 <span class="text-on-surface-variant font-medium">${c.category}</span>
                 <p class="text-on-surface line-clamp-2">${c.description}</p>
-                <p class="text-gray-500 text-[10px]">${c.address || c.landmark || ''}</p>
-                <span class="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold ${c.status === 'RESOLVED' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}">${c.status}</span>
+                <p class="text-gray-500 text-[10px]">📍 ${c.address || c.landmark || ''}</p>
+                <div class="flex flex-wrap gap-1 mt-1">
+                  <span class="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold ${c.status === 'RESOLVED' ? 'bg-green-100 text-green-700' : c.lifecycleStatus === 'ESCALATED' ? 'bg-red-100 text-red-700' : c.lifecycleStatus === 'IN_PROGRESS' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}">${c.lifecycleStatus || c.status}</span>
+                  <span class="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-gray-100 text-gray-700 border border-gray-200">${c.assignedDepartment || 'Unassigned'}</span>
+                  <span class="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold ${c.priority === 'CRITICAL' || c.priority === 'HIGH' ? 'bg-red-100 text-red-700' : c.priority === 'MODERATE' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}">${c.priority || 'N/A'}</span>
+                </div>
               </div>
             `);
         }

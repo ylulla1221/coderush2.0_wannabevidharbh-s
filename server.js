@@ -209,7 +209,18 @@ app.get('/api/complaints', async (req, res) => {
       priority: c.priority,
       status: c.status,
       date: c.createdAt.toISOString().split('T')[0],
-      locationConfidence: 0.85
+      locationConfidence: 0.85,
+      // Phase 1 fields
+      referenceNumber: c.referenceNumber || null,
+      lifecycleStatus: c.lifecycleStatus || 'SUBMITTED',
+      assignedDepartment: c.assignedDepartment || null,
+      assignedOfficerName: c.assignedOfficerName || null,
+      sla: c.sla
+        ? { hoursAllotted: c.sla.hoursAllotted, deadline: c.sla.deadline, status: c.sla.status }
+        : { hoursAllotted: null, deadline: null, status: 'ACTIVE' },
+      escalation: c.escalation
+        ? { isEscalated: c.escalation.isEscalated, level: c.escalation.level, target: c.escalation.target }
+        : { isEscalated: false, level: 0, target: null }
     }));
     res.json(mapped);
   } catch (err) {
@@ -587,14 +598,18 @@ app.get('/api/stats', async (req, res) => {
     const urgentQueue = complaints.filter(c => c.priority === 'CRITICAL' || c.priority === 'HIGH' || c.priority === 'Urgent').length;
     const totalTickets = complaints.length;
 
-    // Phase 1: Count true breaches
-    const breachedCount = complaints.filter(c => c.sla?.status === 'BREACHED').length;
+    // Phase 1: Lifecycle & SLA counts
+    const breachedCount   = complaints.filter(c => c.sla?.status === 'BREACHED').length;
+    const resolvedCount   = complaints.filter(c => c.status === 'RESOLVED' || c.lifecycleStatus === 'RESOLVED').length;
+    const escalatedCount  = complaints.filter(c => c.escalation?.isEscalated === true || c.lifecycleStatus === 'ESCALATED').length;
+    const criticalCount   = complaints.filter(c => c.priority === 'CRITICAL').length;
+    const slaCompliance   = totalTickets > 0 ? Math.round(((totalTickets - breachedCount) / totalTickets) * 100) : 100;
 
     const counts = {
       Submitted: complaints.filter(c => c.status === 'PENDING' || c.status === 'Submitted' || c.lifecycleStatus === 'SUBMITTED').length,
       Assigned: complaints.filter(c => c.status === 'IN_INVESTIGATION' || c.status === 'Assigned' || c.lifecycleStatus === 'ASSIGNED').length,
       'In Investigation': complaints.filter(c => c.status === 'DISPATCHED' || c.status === 'In Investigation' || c.lifecycleStatus === 'IN_PROGRESS').length,
-      Resolved: complaints.filter(c => c.status === 'RESOLVED' || c.status === 'Resolved' || c.lifecycleStatus === 'RESOLVED').length
+      Resolved: resolvedCount
     };
 
     const priorityDistribution = {
@@ -603,10 +618,23 @@ app.get('/api/stats', async (req, res) => {
       Low: complaints.filter(c => c.priority === 'LOW' || c.priority === 'Low').length
     };
 
+    // Department workload breakdown
+    const deptWorkload = {};
+    complaints.filter(c => c.status !== 'RESOLVED').forEach(c => {
+      const dept = c.assignedDepartment || c.category || 'General';
+      deptWorkload[dept] = (deptWorkload[dept] || 0) + 1;
+    });
+
     res.json({
       totalActive,
       urgentQueue,
       slaBreachedCount: breachedCount,
+      resolved: resolvedCount,
+      escalated: escalatedCount,
+      critical: criticalCount,
+      totalComplaints: totalTickets,
+      slaCompliance,
+      deptWorkload,
       metrics: {
         totalTickets,
         breachedTotal: breachedCount
@@ -1000,6 +1028,15 @@ app.get('/api/admin/stats', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// Global Error Handler for JSON parsing and other uncaught errors
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    console.error('Bad JSON Payload:', err.message);
+    return res.status(400).send({ status: 400, message: 'Invalid JSON payload' }); // Bad request
+  }
+  next(err);
 });
 
 // Start Server
