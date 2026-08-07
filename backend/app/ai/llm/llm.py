@@ -340,7 +340,6 @@ def _parse_llm_response(raw_response: str) -> ComplaintResult:
 
     required_keys = {
         "category",
-        "department",
         "urgency",
         "location",
         "summary",
@@ -440,7 +439,6 @@ def _parse_llm_response(raw_response: str) -> ComplaintResult:
 
     for key in (
         "category",
-        "department",
         "location",
         "summary",
     ):

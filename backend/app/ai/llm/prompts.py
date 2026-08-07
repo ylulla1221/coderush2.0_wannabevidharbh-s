@@ -27,8 +27,7 @@ You will receive:
 INSTRUCTIONS:
 - Analyze the uploaded civic complaint image together with the complaint text.
 - Extract the following fields from the complaint:
-  • category: The type of civic issue (e.g., "Road Damage", "Illegal Parking", "Fallen Tree", "Broken Street Light", "Water Supply", "Garbage", "Drainage", "Traffic Signal", "Public Safety")
-  • department: The government department responsible (e.g., "Road Department", "Traffic Department", "Water Supply Department", "Sanitation Department", "Electricity Department", "Parks Department", "Public Works Department")
+  • category: The type of civic issue (e.g., "Road Damage", "Illegal Parking", "Tree Fallen", "Broken Street Light", "Water Leakage", "Garbage", "Drainage Blocked", "Traffic Signal", "Public Safety", "Flooding", "Open Manhole", "Electrical Hazard")
   • urgency: One of "Critical", "High", "Medium", "Low"
   • location: The location of the issue. Use the provided location reference or extract ANY location from the text — landmarks, street names, area names, pin codes.
   • summary: A concise English summary of the complaint in 1-2 sentences, regardless of the input language.
@@ -45,7 +44,6 @@ RULES:
 - Always respond in valid JSON matching this exact schema:
 {
     "category": "<string or null>",
-    "department": "<string or null>",
     "urgency": "<Critical|High|Medium|Low or null>",
     "location": "<string or null>",
     "summary": "<string or null>",
@@ -72,7 +70,7 @@ COMPLAINT TEXT:
 
 {location_section}
 
-Extract category, department, urgency, location, summary, and confidence.
+Extract category, urgency, location, summary, and confidence.
 Return ONLY valid JSON."""
 
 
@@ -91,7 +89,6 @@ Use visual evidence to improve extraction accuracy and confidence."""
 
 FALLBACK_RESPONSE: dict = {
     "category": None,
-    "department": None,
     "urgency": None,
     "location": None,
     "summary": None,
