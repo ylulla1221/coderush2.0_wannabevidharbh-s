@@ -1,3 +1,4 @@
+// AuditLog Model - complaint activity and status change history
 const mongoose = require('mongoose');
 
 const auditLogSchema = new mongoose.Schema({
@@ -9,3 +10,4 @@ const auditLogSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('AuditLog', auditLogSchema);
+
