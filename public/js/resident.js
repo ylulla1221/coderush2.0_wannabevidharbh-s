@@ -86,7 +86,9 @@ const ResidentPortal = {
       attributionControl: false
     }).setView([47.6062, -122.3321], 11);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(this.miniMap);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(this.miniMap);
   },
 
   renderTimeline() {
@@ -205,7 +207,9 @@ const ResidentPortal = {
       attributionControl: false
     }).setView([lat, lng], 13);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(this.intakeMap);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(this.intakeMap);
 
     const marker = L.marker([lat, lng], { draggable: true }).addTo(this.intakeMap);
     
@@ -228,7 +232,9 @@ const ResidentPortal = {
       attributionControl: false
     }).setView([lat, lng], 13);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(this.aiIntakeMap);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(this.aiIntakeMap);
     L.marker([lat, lng]).addTo(this.aiIntakeMap);
   },
 
@@ -570,7 +576,9 @@ Please review the final draft on the right and click "Submit Report" when you ar
       attributionControl: false
     }).setView([47.6062, -122.3321], 12);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(this.portalMap);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(this.portalMap);
 
     this.plotPortalMarkers();
   },
