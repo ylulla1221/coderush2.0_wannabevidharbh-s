@@ -102,8 +102,8 @@ const ReportsTab = {
       this.slaMap = null;
     }
 
-    const lat = 41.8795;
-    const lng = -87.6255;
+    const lat = 21.1458;
+    const lng = 79.0882;
 
     this.slaMap = L.map('reports-sla-map', {
       zoomControl: true,
@@ -118,13 +118,14 @@ const ReportsTab = {
     this.markersGroup = L.layerGroup().addTo(this.slaMap);
 
     // Plot only SLA breached / Overdue complaints
-    const overdueComplaints = window.appState.cachedComplaints.filter(c => c.slaBreached && c.status !== 'Resolved' && c.lat && c.lng);
+    const overdueComplaints = window.appState.cachedComplaints.filter(c => c.slaBreached && c.status !== 'Resolved' && (c.latitude || c.lat) && (c.longitude || c.lng));
     
     overdueComplaints.forEach(c => {
-      // Large pulsing red circle marker representing overdue tickets
-      L.circleMarker([c.lat, c.lng], {
+      const cLat = c.latitude || c.lat;
+      const cLng = c.longitude || c.lng;
+      L.circleMarker([cLat, cLng], {
         radius: 8,
-        fillColor: '#ba1a1a', // Error red
+        fillColor: '#ba1a1a',
         color: '#ffffff',
         weight: 2,
         fillOpacity: 0.85
