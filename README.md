@@ -55,64 +55,87 @@
 
 ## Setup and Installation
 
-### 1. Clone the Repository
+1. Clone & Install
+git clone https://github.com/ylulla1221/coderush2.0_wannabevidharbh-s.git
 
-```bash
-git clone https://github.com/your-org/community-redressal-planner.git
+cd coderush2.0_wannabevidharbh-s
 
-cd community-redressal-planner
-```
-
-### 2. Install Dependencies
-
-#### Frontend
-
-```bash
-cd frontend
+# Install the Node/Express backend dependencies
 
 npm install
-```
+2. Configure Environment
+Create a .env file in the project root:
 
-#### Backend
+# ── MongoDB ──────────────────────────────
 
-```bash
-cd ../backend
+MONGODB_URI=mongodb+srv://<user>:<pass>@<cluster>/civicpulse
 
-pip install -r requirements.txt
-```
+# ── Server ───────────────────────────────
 
-### 3. Configure Environment Variables
+PORT=3000
 
-Create a `.env` file in both the `frontend` and `backend` directories.
+# ── AI Service: LLM (BharatCode / OpenAI-compatible) ──
 
-Refer to `.env.example` for all required variables.
+BHARATCODE_API_KEY=your_api_key
 
-Example backend `.env`:
+LLM_BASE_URL=https://your-llm-endpoint/v1
 
-```env
-DATABASE_URL=postgresql://user:password@localhost:5432/dbname
-GEMINI_API_KEY=your_gemini_key
-QDRANT_URL=your_qdrant_url
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_key
-```
+LLM_MODEL=your-model-name
 
-### 4. Start the Development Server
+LLM_TEMPERATURE=0.1
 
-#### Frontend
+LLM_MAX_TOKENS=1024
 
-```bash
+LLM_TIMEOUT=120
+
+# ── AI Service: Embeddings + Qdrant ──────
+
+EMBEDDING_MODEL=BAAI/bge-base-en-v1.5
+
+QDRANT_URL=https://your-qdrant-endpoint
+
+QDRANT_API_KEY=your_qdrant_key
+
+QDRANT_COLLECTION=civicflow_complaints
+
+On first run, the Express server auto-seeds default users (operator, officers, residents) and field crews if the database is empty.
+3. Start the Express Backend (API + Frontend)
+# Production
+
+npm start
+
+# Development (auto-reload with nodemon)
+
 npm run dev
-```
 
-#### Backend
+Once running:
 
-```bash
-python main.py
-```
+🌐 App (Resident + Dashboard) → http://localhost:3000
+🔌 API base → http://localhost:3000/api
 
-or
+The vanilla-JS frontend in frontend/public is served statically by Express — no separate frontend build step is required.
+4. Start the AI Pipeline Service (FastAPI)
+cd backend
 
-```bash
-uvicorn main:app --reload
-```
+# Install Python dependencies (create a venv first if you prefer)
+
+pip install fastapi uvicorn pydantic httpx python-dotenv \
+
+            sentence-transformers qdrant-client
+
+# Run the AI API
+
+uvicorn app.main:app --reload --port 8000
+
+❤️ Health check → http://localhost:8000/
+🧠 Pipeline endpoint → POST http://localhost:8000/pipeline
+
+curl -X POST http://localhost:8000/pipeline \
+
+  -H "Content-Type: application/json" \
+
+  -d '{"complaint_text":"Large pothole near YCCE College in Nagpur","location":"Nagpur"}'
+5. Run the AI Test Suite
+cd backend
+
+pytest tests/
