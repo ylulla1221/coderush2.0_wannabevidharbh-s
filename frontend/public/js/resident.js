@@ -112,7 +112,8 @@ const ResidentPortal = {
     const container = document.getElementById('res-action-timeline');
     if (!container) return;
 
-    const complaints = window.appState.cachedComplaints || [];
+    let complaints = window.appState.cachedComplaints || [];
+    complaints = complaints.filter(c => c.status !== 'RESOLVED' && c.lifecycleStatus !== 'RESOLVED');
 
     if (complaints.length === 0) {
       container.innerHTML = `<div class="text-xs text-on-surface-variant italic py-4">No complaints recorded yet.</div>`;
@@ -264,9 +265,9 @@ const ResidentPortal = {
     const category = document.getElementById('res-form-category').value;
     const description = document.getElementById('res-form-description').value;
     const address = document.getElementById('res-form-address').value;
-    
+
     const id = `CR-${Math.floor(1000 + Math.random() * 9000)}`;
-    
+
 
     const newTicket = {
       id,
@@ -281,33 +282,48 @@ const ResidentPortal = {
       status: 'Submitted'
     };
 
+    let result;
     try {
-      const result = await window.API.createComplaint(newTicket);
-
-      // Duplicate complaint detected
-      if (result.duplicate) {
-        window.showToast(`Duplicate complaint detected! Existing Complaint ID: ${result.existingComplaintId}`, "warning");
-        return;
-      }
-
-      const ref = result.referenceNumber || result.id || id;
-      localStorage.setItem('lastResidentRef', ref);
-
-      // Successfully created
-      window.showToast(`Report logged successfully. Ticket reference: ${ref}`, 'success');
-
-      document.getElementById('res-form-category').value = '';
-      document.getElementById('res-form-description').value = '';
-      document.getElementById('res-form-address').value = '';
-      document.getElementById('media-preview-container').classList.add('hidden');
-      document.getElementById('media-upload-label').textContent = 'Click to upload or drag and drop';
-
-      await this.fetchData();
-      this.switchTab('dashboard');
-
+      result = await window.API.createComplaint(newTicket);
+      console.log('[submitComplaint] API result:', result);
     } catch (err) {
+      console.error('[submitComplaint] API call failed:', err);
       window.showToast('Failed to insert report.', 'error');
+      return;
     }
+
+    // Duplicate complaint detected
+    if (result && result.duplicate) {
+      window.showToast(`Duplicate complaint detected! Existing Complaint ID: ${result.existingComplaintId}`, "warning");
+      return;
+    }
+
+    const ref = (result && (result.referenceNumber || result.id)) || id;
+    localStorage.setItem('lastResidentRef', ref);
+
+    // Successfully created
+    window.showToast(`Report logged successfully. Ticket reference: ${ref}`, 'success');
+
+    // Show clarification prompt if backend flagged missing information
+    if (result && result.clarification && result.clarification.needed && window.ClarificationPrompt) {
+      window.ClarificationPrompt.show(result.clarification);
+    }
+
+    document.getElementById('res-form-category').value = '';
+    document.getElementById('res-form-description').value = '';
+    document.getElementById('res-form-address').value = '';
+    document.getElementById('media-preview-container').classList.add('hidden');
+    document.getElementById('media-upload-label').textContent = 'Click to upload or drag and drop';
+
+    // Post-success refresh — errors here must NOT hide the success message
+    try {
+      await this.fetchData();
+      this.renderResidentStats();
+      this.renderTimeline();
+    } catch (refreshErr) {
+      console.warn('[submitComplaint] Post-submit refresh failed:', refreshErr);
+    }
+    this.switchTab('dashboard');
   },
 
   // Chat State Initialization
@@ -529,27 +545,44 @@ const ResidentPortal = {
       status: 'Submitted'
     };
 
+    let result;
     try {
-      const result = await window.API.createComplaint(newTicket);
-
-      // Duplicate complaint
-      if (result.duplicate) {
-        window.showToast(`Duplicate complaint detected! Existing Complaint ID: ${result.existingComplaintId}`, "warning");
-        return;
-      }
-
-      const ref = result.referenceNumber || result.id || id;
-      localStorage.setItem('lastResidentRef', ref);
-
-      // Successfully created
-      window.showToast(`AI Draft successfully submitted! Reference: ${ref}`, 'success');
-      
-      this.resetAIChat();
-      await this.fetchData();
-      this.switchTab('dashboard');
+      result = await window.API.createComplaint(newTicket);
+      console.log('[submitAIDraft] API result:', result);
     } catch (err) {
+      console.error('[submitAIDraft] API call failed:', err);
       window.showToast('Failed to save report.', 'error');
+      return;
     }
+
+    // Duplicate complaint
+    if (result && result.duplicate) {
+      window.showToast(`Duplicate complaint detected! Existing Complaint ID: ${result.existingComplaintId}`, "warning");
+      return;
+    }
+
+    const ref = (result && (result.referenceNumber || result.id)) || id;
+    localStorage.setItem('lastResidentRef', ref);
+
+    // Successfully created
+    window.showToast(`AI Draft successfully submitted! Reference: ${ref}`, 'success');
+
+    // Show clarification prompt if backend flagged missing information
+    if (result && result.clarification && result.clarification.needed && window.ClarificationPrompt) {
+      window.ClarificationPrompt.show(result.clarification);
+    }
+
+    this.resetAIChat();
+
+    // Post-success refresh — errors here must NOT hide the success message
+    try {
+      await this.fetchData();
+      this.renderResidentStats();
+      this.renderTimeline();
+    } catch (refreshErr) {
+      console.warn('[submitAIDraft] Post-submit refresh failed:', refreshErr);
+    }
+    this.switchTab('dashboard');
   },
 
   // 3. Citizen Map View with side-panels (Seattle Coords)

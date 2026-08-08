@@ -298,16 +298,48 @@ app.post('/api/complaints', async (req, res) => {
   // ---------------------------
 
   if (analysis.duplicate.is_duplicate === true) {
-    return res.status(200).json({
-      success: false,
-      duplicate: true,
-      existingComplaintId: analysis.duplicate.matched_complaint_id,
-      similarity: analysis.duplicate.similarity_score,
-      message: "A similar complaint already exists."
-    });
+    const { validateDuplicateLocation } = require('./services/locationGuard');
+    let locationValidation;
+    try {
+      locationValidation = await validateDuplicateLocation(
+        analysis.duplicate,
+        lat,
+        lng,
+        address,
+        summary.category
+      );
+    } catch (err) {
+      console.error('[locationGuard] Error during duplicate validation:', err);
+      // Guard errored — conservatively treat as different location to avoid false-positive
+      locationValidation = {
+        allowed: false,
+        reason: 'Location guard error — treating as different location',
+      };
+    }
+
+    if (!locationValidation.allowed) {
+      // Different location — do not mark as duplicate, proceed to create
+      console.log(`[locationGuard] Duplicate bypassed: ${locationValidation.reason}`);
+      analysis.duplicate.is_duplicate = false;
+      analysis.duplicate.duplicate_type = 'similar_different_location';
+      analysis.duplicate.reason = [locationValidation.reason];
+    } else {
+      return res.status(200).json({
+        success: false,
+        duplicate: true,
+        existingComplaintId: analysis.duplicate.matched_complaint_id,
+        similarity: analysis.duplicate.similarity_score,
+        message: 'A similar complaint already exists.'
+      });
+    }
   }
 
   try {
+    // Normalize priority: AI may return 'Medium'/'MEDIUM' etc. not in the schema enum
+    const priorityMap = { 'MEDIUM': 'MODERATE' };
+    const rawPriority = ((summary && summary.priority) ? String(summary.priority) : 'MODERATE').toUpperCase();
+    const normalizedPriority = priorityMap[rawPriority] || rawPriority;
+
     const newComplaint = await Complaint.create({
       title: title || `${summary.category} at ${address}`,
 
@@ -319,7 +351,7 @@ app.post('/api/complaints', async (req, res) => {
 
       city: req.body.city,
 
-      priority: summary.priority.toUpperCase(),
+      priority: normalizedPriority,
 
       location: {
         type: "Point",
@@ -367,7 +399,48 @@ app.post('/api/complaints', async (req, res) => {
 
     await notificationEngine.notify(newComplaint, 'COMPLAINT_SUBMITTED');
 
-    res.status(201).json({ success: true, id: newComplaint._id.toString(), referenceNumber: newComplaint.referenceNumber, lat, lng });
+    // --- Clarification Prompt: detect missing info from AI analysis ---
+    // Wrapped in its own try/catch — complaint is already saved; this must never block the response.
+    let clarification = { needed: false };
+    try {
+      const isUrgent = ['HIGH', 'CRITICAL'].includes(normalizedPriority) ||
+        (summary && summary.requires_escalation === true) ||
+        (summary && ['Critical', 'High'].includes(summary.urgency));
+
+      const missingFields = [];
+      const aiConfidence = (complaintAI && complaintAI.confidence != null) ? complaintAI.confidence : 1;
+      const aiLocation   = (complaintAI && complaintAI.location)           ? complaintAI.location.trim() : '';
+      const reqAddress   = (address && typeof address === 'string')        ? address.trim() : '';
+      const reqReporter  = (reporterName && typeof reporterName === 'string') ? reporterName.trim() : '';
+      const reqContact   = (reporterContact && typeof reporterContact === 'string') ? reporterContact.trim() : '';
+
+      if (!aiLocation || aiLocation.length < 5)   missingFields.push({ field: 'precise_location', label: 'Precise location or landmark' });
+      if (aiConfidence < 0.70)                     missingFields.push({ field: 'issue_details',    label: 'More issue details or description' });
+      if (!reqAddress   || reqAddress.length < 5)  missingFields.push({ field: 'address',          label: 'Full street address' });
+      if (!reqReporter  || reqReporter.length < 2) missingFields.push({ field: 'reporter_name',    label: 'Reporter name' });
+      if (!reqContact   || reqContact.length < 5)  missingFields.push({ field: 'contact',          label: 'Contact number or email' });
+
+      if (missingFields.length > 0) {
+        clarification = {
+          needed: true,
+          urgent: isUrgent,
+          fields: missingFields,
+          referenceNumber: newComplaint.referenceNumber
+        };
+      }
+    } catch (clarErr) {
+      // Clarification check failed — safe to ignore, complaint already saved
+      console.warn('[clarification] Failed to compute clarification fields:', clarErr.message);
+    }
+
+    res.status(201).json({
+      success: true,
+      id: newComplaint._id.toString(),
+      referenceNumber: newComplaint.referenceNumber,
+      lat,
+      lng,
+      clarification
+    });
   } catch (err) {
 
     res.status(500).json({ error: err.message });

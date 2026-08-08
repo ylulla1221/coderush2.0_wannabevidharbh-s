@@ -58,9 +58,14 @@ const IntakeForm = {
       }
 
       if (result && (result.success || result.referenceNumber || result.id)) {
-        const ref = result.referenceNumber || result.id || id;
+        const ref = result.referenceNumber || result.id || 'Unknown';
         window.showToast(`Complaint ${ref} successfully logged!`, 'success');
         this.closeModal();
+
+        // Show clarification prompt if backend flagged missing information
+        if (result.clarification && result.clarification.needed && window.ClarificationPrompt) {
+          window.ClarificationPrompt.show(result.clarification);
+        }
 
         // Refresh overview data in a protective try-catch block
         try {

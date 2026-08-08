@@ -688,60 +688,6 @@
         </div>
 
         <div class="relative pl-8 border-l border-outline-variant space-y-8 ml-3" id="res-action-timeline">
-          <!-- Timeline Item 1 -->
-          <div class="relative">
-            <span class="absolute -left-[41px] top-0.5 bg-secondary text-white w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow">
-              <span class="material-symbols-outlined text-xs">engineering</span>
-            </span>
-            <div class="bg-surface-container-low p-4 rounded-xl border border-outline-variant max-w-2xl space-y-1">
-              <div class="flex justify-between items-center text-[10px]">
-                <span class="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded uppercase">Moderate</span>
-                <span class="text-outline font-mono">Today, 09:45 AM</span>
-              </div>
-              <h4 class="font-sans font-bold text-sm text-primary">Pothole Repair Scheduled</h4>
-              <p class="text-xs text-on-surface-variant">Assigned to Crew Beta. Estimated completion by EOD.</p>
-              <div class="text-[10px] text-outline flex items-center gap-3 pt-1">
-                <span>📍 1240 Main St, District 4</span>
-                <span>Ref ID: <span class="font-mono pii-masked">CP-8921</span></span>
-              </div>
-            </div>
-          </div>
-          <!-- Timeline Item 2 -->
-          <div class="relative">
-            <span class="absolute -left-[41px] top-0.5 bg-blue-600 text-white w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow">
-              <span class="material-symbols-outlined text-xs">visibility</span>
-            </span>
-            <div class="bg-surface-container-low p-4 rounded-xl border border-outline-variant max-w-2xl space-y-1">
-              <div class="flex justify-between items-center text-[10px]">
-                <span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded uppercase">Low</span>
-                <span class="text-outline font-mono">Yesterday, 14:30 PM</span>
-              </div>
-              <h4 class="font-sans font-bold text-sm text-primary">Inspection Completed</h4>
-              <p class="text-xs text-on-surface-variant">Streetlight outage verified by field agent. Parts ordered.</p>
-              <div class="text-[10px] text-outline flex items-center gap-3 pt-1">
-                <span>📍 89 Park Ave, District 2</span>
-                <span>Ref ID: <span class="font-mono pii-masked">CP-4731</span></span>
-              </div>
-            </div>
-          </div>
-          <!-- Timeline Item 3 -->
-          <div class="relative">
-            <span class="absolute -left-[41px] top-0.5 bg-slate-400 text-white w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow">
-              <span class="material-symbols-outlined text-xs">mail</span>
-            </span>
-            <div class="bg-surface-container-low p-4 rounded-xl border border-outline-variant max-w-2xl space-y-1">
-              <div class="flex justify-between items-center text-[10px]">
-                <span class="bg-red-100 text-red-800 font-bold px-2 py-0.5 rounded uppercase">Urgent</span>
-                <span class="text-outline font-mono">Oct 12, 08:00 AM</span>
-              </div>
-              <h4 class="font-sans font-bold text-sm text-primary">Report Submitted</h4>
-              <p class="text-xs text-on-surface-variant">Water main leak reported. Awaiting initial triage.</p>
-              <div class="text-[10px] text-outline flex items-center gap-3 pt-1">
-                <span>📍 400 Elm St, District 1</span>
-                <span>Ref ID: <span class="font-mono pii-masked">CR-9901</span></span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -1259,10 +1205,59 @@
   <script src="/js/simulation.js"></script>
   <script src="/js/reports.js"></script>
   <script src="/js/sql_explorer.js"></script>
+  <script src="/js/clarification.js"></script>
   <script src="/js/intake.js"></script>
-  
+
   <!-- Resident specific logic module -->
   <script src="/js/resident.js"></script>
+
+  <!-- ==================== MODAL: CLARIFICATION PROMPT ==================== -->
+  <div id="clarification-modal" class="hidden fixed inset-0 z-[2100] overflow-y-auto bg-slate-900/60 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-xl border border-outline-variant w-full max-w-md flex flex-col">
+      <!-- Header -->
+      <div class="p-4 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-secondary" id="clarification-modal-icon">help_outline</span>
+          <h3 class="font-bold text-primary text-sm" id="clarification-modal-title">Clarification Needed</h3>
+        </div>
+        <button onclick="window.ClarificationPrompt.close()" class="text-outline hover:text-primary">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <!-- Body -->
+      <div class="p-5 space-y-4 text-xs">
+        <p class="text-on-surface-variant" id="clarification-modal-message"></p>
+        <!-- Missing fields list -->
+        <div id="clarification-fields-container" class="space-y-2"></div>
+        <!-- Clarification textarea (only shown for non-urgent) -->
+        <div id="clarification-input-section" class="hidden space-y-2">
+          <label class="block font-semibold text-primary">Additional Information <span class="text-outline font-normal">(optional)</span></label>
+          <textarea id="clarification-additional-info" rows="3"
+            placeholder="Provide any missing details here..."
+            class="w-full p-2 border border-outline-variant rounded bg-surface text-xs focus:outline-none focus:border-secondary"></textarea>
+          <div class="flex gap-2 justify-end">
+            <button onclick="window.ClarificationPrompt.skip()"
+              class="px-3 py-1.5 text-xs text-on-surface-variant border border-outline-variant rounded hover:bg-surface-container transition-all">
+              Skip
+            </button>
+            <button onclick="window.ClarificationPrompt.submit()"
+              class="px-3 py-1.5 text-xs bg-secondary text-white rounded hover:bg-secondary/90 transition-all font-semibold">
+              Submit Additional Info
+            </button>
+          </div>
+        </div>
+        <!-- Urgent-only dismiss button -->
+        <div id="clarification-urgent-section" class="hidden">
+          <button onclick="window.ClarificationPrompt.close()"
+            class="w-full px-3 py-2 text-xs bg-surface-container border border-outline-variant rounded hover:bg-surface-container-low transition-all text-on-surface-variant">
+            Dismiss
+          </button>
+        </div>
+        <!-- Reference number display -->
+        <p class="text-[10px] text-outline font-mono" id="clarification-ref-display"></p>
+      </div>
+    </div>
+  </div>
 
 </body>
 </html>

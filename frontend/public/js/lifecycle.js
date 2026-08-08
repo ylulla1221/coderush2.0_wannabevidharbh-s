@@ -267,6 +267,10 @@ const LifecyclePanel = {
       const result = await window.API.startWork(id);
       if (!result || result.error) throw new Error(result?.error || 'API error');
       window.showToast('Work started — lifecycle updated to IN_PROGRESS', 'success');
+      window.appState.cachedComplaints = await window.API.getComplaints();
+      if (window.ActiveTasksTab) window.ActiveTasksTab.renderTable();
+      if (window.ResidentPortal) window.ResidentPortal.renderResidentStats();
+      if (window.OverviewTab) await window.OverviewTab.init();
       await this._refreshAndRender(id);
     } catch (e) { window.showToast('Failed to start work: ' + e.message, 'error'); }
   },

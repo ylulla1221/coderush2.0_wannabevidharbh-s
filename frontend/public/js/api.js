@@ -14,9 +14,22 @@ const API = {
 
     try {
       const response = await fetch(url, options);
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (parseErr) {
+        if (response.ok) {
+          data = { success: true };
+        } else {
+          throw new Error(`Failed to parse response: ${parseErr.message}`);
+        }
+      }
+      // Log status + parsed body for debugging POST submissions
+      if (method === 'POST') {
+        console.log(`[API] ${method} ${url} → HTTP ${response.status}`, data);
+      }
       if (!response.ok) {
-        throw new Error(data.error || `HTTP error! Status: ${response.status}`);
+        throw new Error(data.error || data.message || `HTTP error! Status: ${response.status}`);
       }
       return data;
     } catch (err) {
